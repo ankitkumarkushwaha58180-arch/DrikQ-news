@@ -1,6 +1,10 @@
 package com.example.ui.screens
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,15 +34,15 @@ import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -46,7 +50,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,25 +89,25 @@ fun ReporterUploadScreen(
     val reporter by FirebaseRepository.currentReporter.collectAsState()
 
     var mediaType by remember { mutableStateOf(MediaType.VIDEO) }
+    var selectedMediaUri by remember { mutableStateOf<Uri?>(null) }
+
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var place by remember { mutableStateOf("") }
 
-    // Media preview presets (representing captured camera / picked media)
-    var selectedMediaUrl by remember {
-        mutableStateOf("https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1080&q=80")
-    }
-
     var isUploading by remember { mutableStateOf(false) }
     var uploadProgress by remember { mutableIntStateOf(0) }
-    var uploadSuccess by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
 
-    val presetImages = listOf(
-        "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1080&q=80",
-        "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1080&q=80",
-        "https://images.unsplash.com/photo-1495020689067-958852a7765e?auto=format&fit=crop&w=1080&q=80"
-    )
+    // Real Device Gallery Picker Launcher
+    val mediaPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            selectedMediaUri = uri
+            validationError = null
+        }
+    }
 
     Box(
         modifier = modifier
@@ -192,10 +195,17 @@ fun ReporterUploadScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(modifier = Modifier.fillMaxWidth()) {
+                // Video News Option
                 Card(
                     modifier = Modifier
                         .weight(1f)
-                        .clickable(enabled = !isUploading) { mediaType = MediaType.VIDEO }
+                        .clickable(enabled = !isUploading) {
+                            mediaType = MediaType.VIDEO
+                            // Open real video gallery
+                            mediaPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                            )
+                        }
                         .border(
                             width = 2.dp,
                             color = if (mediaType == MediaType.VIDEO) NewsRed else Color.Transparent,
@@ -229,10 +239,17 @@ fun ReporterUploadScreen(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
+                // Photo Story Option
                 Card(
                     modifier = Modifier
                         .weight(1f)
-                        .clickable(enabled = !isUploading) { mediaType = MediaType.PHOTO }
+                        .clickable(enabled = !isUploading) {
+                            mediaType = MediaType.PHOTO
+                            // Open real photo gallery
+                            mediaPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
                         .border(
                             width = 2.dp,
                             color = if (mediaType == MediaType.PHOTO) NewsRed else Color.Transparent,
@@ -267,9 +284,9 @@ fun ReporterUploadScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Step 2: Media Preview / Picker
+            // Step 2: Media Preview / Real Device Gallery Picker Box
             Text(
-                text = "2. MEDIA FILE (STORAGE READY)",
+                text = "2. CHOOSE FILE FROM PHONE GALLERY",
                 color = SlateGray,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -280,63 +297,91 @@ fun ReporterUploadScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp),
+                    .height(200.dp)
+                    .clickable(enabled = !isUploading) {
+                        val request = if (mediaType == MediaType.VIDEO) {
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                        } else {
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        }
+                        mediaPickerLauncher.launch(request)
+                    },
                 colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate)
             ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(selectedMediaUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Selected media",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.65f),
-                        shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier
-                            .padding(10.dp)
-                            .align(Alignment.BottomStart)
-                    ) {
-                        Text(
-                            text = if (mediaType == MediaType.VIDEO) "Video Camera Buffer (1080p)" else "High-Res Photo Asset",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
-
-            // Quick Media Presets Row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                presetImages.forEachIndexed { index, url ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(44.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .border(
-                                1.dp,
-                                if (selectedMediaUrl == url) NewsRed else BorderSlate,
-                                RoundedCornerShape(8.dp)
-                            )
-                            .clickable { selectedMediaUrl = url }
-                    ) {
+                if (selectedMediaUri != null) {
+                    // Show the actual selected video/photo as preview
+                    Box(modifier = Modifier.fillMaxSize()) {
                         AsyncImage(
-                            model = ImageRequest.Builder(context).data(url).build(),
-                            contentDescription = null,
+                            model = ImageRequest.Builder(context)
+                                .data(selectedMediaUri)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Selected media preview",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
+                        )
+
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.75f),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .align(Alignment.BottomStart)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = SuccessGreen,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (mediaType == MediaType.VIDEO) "Video selected from gallery (Tap to change)" else "Photo selected from gallery (Tap to change)",
+                                    color = Color.White,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // Placeholder prompting user to open gallery
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(60.dp),
+                            shape = CircleShape,
+                            color = NewsRed.copy(alpha = 0.15f)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (mediaType == MediaType.VIDEO) Icons.Default.VideoLibrary else Icons.Default.AddPhotoAlternate,
+                                    contentDescription = null,
+                                    tint = NewsRed,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = if (mediaType == MediaType.VIDEO) "Tap to choose Video from Gallery" else "Tap to choose Photo from Gallery",
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Opens real phone media picker",
+                            color = SlateGray,
+                            fontSize = 12.sp
                         )
                     }
                 }
@@ -502,6 +547,10 @@ fun ReporterUploadScreen(
             // Upload Button
             Button(
                 onClick = {
+                    if (selectedMediaUri == null) {
+                        validationError = "Please select a ${if (mediaType == MediaType.VIDEO) "video" else "photo"} from your phone gallery"
+                        return@Button
+                    }
                     if (title.isBlank()) {
                         validationError = "Title is required"
                         return@Button
@@ -515,7 +564,14 @@ fun ReporterUploadScreen(
                         return@Button
                     }
 
-                    val currentRep = reporter ?: FirebaseRepository.reporters.value.first()
+                    val currentRep = reporter ?: FirebaseRepository.reporters.value.firstOrNull()
+                        ?: com.example.data.model.Reporter(
+                            id = "REP-LOCAL",
+                            name = "Ground Journalist",
+                            mobile = "+91 98000 00000",
+                            address = place
+                        )
+
                     isUploading = true
                     validationError = null
 
@@ -525,11 +581,10 @@ fun ReporterUploadScreen(
                             description = description.trim(),
                             place = place.trim(),
                             mediaType = mediaType,
-                            mediaUrl = selectedMediaUrl,
+                            mediaUrl = selectedMediaUri.toString(),
                             reporter = currentRep,
                             onProgress = { p -> uploadProgress = p }
                         )
-                        uploadSuccess = true
                         Toast.makeText(context, "News submitted! Status: Pending Editorial Approval", Toast.LENGTH_LONG).show()
                         delay(600)
                         // After successful upload -> automatically redirect to Home Feed

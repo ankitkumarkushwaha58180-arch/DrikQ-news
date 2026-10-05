@@ -61,38 +61,7 @@ object FirebaseRepository {
     }
 
     private fun seedInitialData() {
-        val rep1 = Reporter(
-            id = "REP-1042",
-            name = "Ravi Sharma",
-            mobile = "+91 98765 43210",
-            address = "Central Bureau, New Delhi",
-            photoUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-            password = "RepPass#1042",
-            followersCount = 1420,
-            followingCount = 18
-        )
-        val rep2 = Reporter(
-            id = "REP-2098",
-            name = "Priya Sen",
-            mobile = "+91 91234 56789",
-            address = "East Zone Desk, Kolkata",
-            photoUrl = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
-            password = "RepPass#2098",
-            followersCount = 2890,
-            followingCount = 35
-        )
-        val rep3 = Reporter(
-            id = "REP-3401",
-            name = "Arjun Mehta",
-            mobile = "+91 99887 76655",
-            address = "Tech & Metro Beat, Bengaluru",
-            photoUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
-            password = "RepPass#3401",
-            followersCount = 890,
-            followingCount = 12
-        )
-
-        _reporters.value = listOf(rep1, rep2, rep3)
+        _reporters.value = emptyList()
 
         val post1 = Post(
             id = "post-101",
@@ -102,9 +71,9 @@ object FirebaseRepository {
             mediaType = MediaType.VIDEO,
             mediaUrl = "https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1080&q=80",
             thumbnailUrl = "https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1080&q=80",
-            reporterId = rep1.id,
-            reporterName = rep1.name,
-            reporterPhotoUrl = rep1.photoUrl,
+            reporterId = "REP-EDITORIAL",
+            reporterName = "City Bureau Desk",
+            reporterPhotoUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
             status = PostStatus.APPROVED,
             likesCount = 342,
             viewsCount = 4120,
@@ -119,64 +88,22 @@ object FirebaseRepository {
             mediaType = MediaType.PHOTO,
             mediaUrl = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1080&q=80",
             thumbnailUrl = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1080&q=80",
-            reporterId = rep2.id,
-            reporterName = rep2.name,
-            reporterPhotoUrl = rep2.photoUrl,
+            reporterId = "REP-EDITORIAL",
+            reporterName = "City Bureau Desk",
+            reporterPhotoUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
             status = PostStatus.APPROVED,
             likesCount = 512,
             viewsCount = 6200,
             timestamp = System.currentTimeMillis() - 3600000 * 12
         )
 
-        val post3 = Post(
-            id = "post-103",
-            title = "Severe Flash Flood Warning: Relief Camps Mobilized in North Sector",
-            description = "Heavy rainfall overnight led to rising river levels. Disaster response teams have deployed emergency boats and distributed drinking water kits to affected families.",
-            place = "North River Basin",
-            mediaType = MediaType.VIDEO,
-            mediaUrl = "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1080&q=80",
-            thumbnailUrl = "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1080&q=80",
-            reporterId = rep1.id,
-            reporterName = rep1.name,
-            reporterPhotoUrl = rep1.photoUrl,
-            status = PostStatus.APPROVED,
-            likesCount = 189,
-            viewsCount = 2840,
-            timestamp = System.currentTimeMillis() - 3600000 * 24
-        )
-
-        val post4 = Post(
-            id = "post-104",
-            title = "Smart Agriculture Drone Expo Highlights Green Innovations",
-            description = "Farmers tested AI-driven spray drones and moisture sensors aimed at reducing water waste by 30% across rural districts.",
-            place = "Agri-Tech Pavilion",
-            mediaType = MediaType.PHOTO,
-            mediaUrl = "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1080&q=80",
-            thumbnailUrl = "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1080&q=80",
-            reporterId = rep3.id,
-            reporterName = rep3.name,
-            reporterPhotoUrl = rep3.photoUrl,
-            status = PostStatus.PENDING,
-            likesCount = 0,
-            viewsCount = 14,
-            timestamp = System.currentTimeMillis() - 3600000 * 2
-        )
-
-        _posts.value = listOf(post1, post2, post3, post4)
-
-        _notifications.value = listOf(
-            PushNotificationItem(
-                id = "notif-1",
-                title = "Breaking: High-Speed Metro Corridor Open",
-                body = "Commuter trains are officially rolling! Tap to view ground footage.",
-                postId = post1.id
-            )
-        )
+        _posts.value = listOf(post1, post2)
     }
 
     private fun fetchFromRemoteRtdb() {
         scope.launch {
             try {
+                // Fetch policy
                 val request = Request.Builder()
                     .url("$RTDB_BASE_URL/settings/policy.json")
                     .get()
@@ -193,8 +120,45 @@ object FirebaseRepository {
                         }
                     }
                 }
+
+                // Fetch real reporters from RTDB
+                val repReq = Request.Builder()
+                    .url("$RTDB_BASE_URL/reporters.json")
+                    .get()
+                    .build()
+                httpClient.newCall(repReq).execute().use { repResponse ->
+                    if (repResponse.isSuccessful) {
+                        val body = repResponse.body?.string()
+                        if (!body.isNullOrBlank() && body != "null") {
+                            val json = JSONObject(body)
+                            val list = mutableListOf<Reporter>()
+                            val keys = json.keys()
+                            while (keys.hasNext()) {
+                                val key = keys.next()
+                                val obj = json.optJSONObject(key)
+                                if (obj != null) {
+                                    list.add(
+                                        Reporter(
+                                            id = obj.optString("id", key),
+                                            name = obj.optString("name"),
+                                            mobile = obj.optString("mobile"),
+                                            address = obj.optString("address"),
+                                            photoUrl = obj.optString("photoUrl"),
+                                            password = obj.optString("password"),
+                                            followersCount = obj.optInt("followersCount", 0),
+                                            followingCount = obj.optInt("followingCount", 0)
+                                        )
+                                    )
+                                }
+                            }
+                            if (list.isNotEmpty()) {
+                                _reporters.value = list
+                            }
+                        }
+                    }
+                }
             } catch (e: Exception) {
-                // Silently fallback to seeded local cache
+                // Silently fallback to cached state
             }
         }
     }

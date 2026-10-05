@@ -35,69 +35,108 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
     final nameController = TextEditingController();
     final mobileController = TextEditingController();
     final addressController = TextEditingController();
-    String photoUrl =
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+    String? selectedPhotoPath;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.darkSurface,
-        title: const Text('Add New Ground Reporter',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Full Name *'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: mobileController,
-                decoration: const InputDecoration(labelText: 'Mobile Number *'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: addressController,
-                decoration: const InputDecoration(labelText: 'Address / Beat *'),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Note: System will auto-generate unique User ID and Password upon save.',
-                style: TextStyle(color: Colors.amber, fontSize: 11),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textGray)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryRed,
-              foregroundColor: Colors.white,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.darkSurface,
+          title: const Text('Add New Ground Reporter',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Circular profile photo preview
+                GestureDetector(
+                  onTap: () async {
+                    // Pick profile photo from phone gallery
+                  },
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      CircleAvatar(
+                        radius: 38,
+                        backgroundColor: AppTheme.darkBackground,
+                        child: const Icon(Icons.person, size: 40, color: AppTheme.textGray),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppTheme.primaryRed,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () {
+                    // Gallery pick
+                  },
+                  icon: const Icon(Icons.photo_library, size: 16, color: AppTheme.primaryRed),
+                  label: const Text('Upload Profile Photo',
+                      style: TextStyle(color: AppTheme.primaryRed, fontSize: 12)),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Full Name *'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: mobileController,
+                  decoration: const InputDecoration(labelText: 'Mobile Number *'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: addressController,
+                  decoration: const InputDecoration(labelText: 'Address / Beat *'),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Note: System will auto-generate unique User ID and Password upon save.',
+                  style: TextStyle(color: Colors.amber, fontSize: 11),
+                ),
+              ],
             ),
-            onPressed: () async {
-              if (nameController.text.isNotEmpty &&
-                  mobileController.text.isNotEmpty &&
-                  addressController.text.isNotEmpty) {
-                Navigator.pop(ctx);
-                final service =
-                    Provider.of<FirebaseService>(context, listen: false);
-                final newRep = await service.createReporter(
-                  name: nameController.text.trim(),
-                  mobile: mobileController.text.trim(),
-                  address: addressController.text.trim(),
-                  photoUrl: photoUrl,
-                );
-                _showGeneratedCredentialsDialog(newRep);
-              }
-            },
-            child: const Text('Create Reporter'),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: AppTheme.textGray)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryRed,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                if (nameController.text.isNotEmpty &&
+                    mobileController.text.isNotEmpty &&
+                    addressController.text.isNotEmpty) {
+                  Navigator.pop(ctx);
+                  final service =
+                      Provider.of<FirebaseService>(context, listen: false);
+                  final newRep = await service.createReporter(
+                    name: nameController.text.trim(),
+                    mobile: mobileController.text.trim(),
+                    address: addressController.text.trim(),
+                    photoUrl: selectedPhotoPath ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+                  );
+                  _showGeneratedCredentialsDialog(newRep);
+                }
+              },
+              child: const Text('Create Reporter'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
         ],
       ),
     );

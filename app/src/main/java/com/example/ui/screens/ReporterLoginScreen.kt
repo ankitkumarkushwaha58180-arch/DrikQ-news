@@ -283,67 +283,6 @@ fun ReporterLoginScreen(
                     color = Color.White
                 )
             }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Quick Tester Credentials Hint
-            Card(
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = Color(0xFF60A5FA),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Assigned Reporter Accounts (Demo / Admin Seeded)",
-                            color = Color(0xFF93C5FD),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    reporters.take(2).forEach { rep ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable {
-                                    userId = rep.id
-                                    password = rep.password
-                                },
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "${rep.name} (${rep.id})",
-                                    color = Color.White,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "Password: ${rep.password}",
-                                    color = SlateGray,
-                                    fontSize = 11.sp
-                                )
-                            }
-                            Text(
-                                text = "Auto-Fill",
-                                color = NewsRed,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }

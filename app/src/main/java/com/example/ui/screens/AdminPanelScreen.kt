@@ -3,7 +3,11 @@ package com.example.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -41,6 +46,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -958,19 +964,17 @@ fun AddEditReporterDialog(
     var name by remember { mutableStateOf(reporterToEdit?.name ?: "") }
     var mobile by remember { mutableStateOf(reporterToEdit?.mobile ?: "") }
     var address by remember { mutableStateOf(reporterToEdit?.address ?: "") }
-    var photoUrl by remember {
-        mutableStateOf(
-            reporterToEdit?.photoUrl
-                ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
-        )
-    }
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
+    var photoUrl by remember { mutableStateOf(reporterToEdit?.photoUrl ?: "") }
 
-    val sampleAvatars = listOf(
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-        "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80",
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80"
-    )
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            photoUri = uri
+            photoUrl = uri.toString()
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -986,31 +990,97 @@ fun AddEditReporterDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Profile Picture selection
-                Text("Select Profile Picture:", color = SlateGray, fontSize = 12.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                // Circular profile photo placeholder / preview
+                Box(
+                    modifier = Modifier
+                        .size(86.dp)
+                        .clip(CircleShape)
+                        .background(DarkBackground)
+                        .border(2.dp, NewsRed, CircleShape)
+                        .clickable {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
-                    sampleAvatars.forEach { url ->
-                        val isSelected = photoUrl == url
+                    if (photoUri != null) {
                         AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(url).build(),
-                            contentDescription = null,
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(photoUri)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Selected profile photo",
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .border(2.dp, if (isSelected) NewsRed else Color.Transparent, CircleShape)
-                                .clickable { photoUrl = url }
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (photoUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(photoUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Reporter photo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Default avatar",
+                            tint = SlateGray,
+                            modifier = Modifier.size(46.dp)
+                        )
+                    }
+
+                    // Camera badge
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(NewsRed),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = "Upload Photo",
+                            tint = Color.White,
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        photoPickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NewsRed),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, NewsRed),
+                    modifier = Modifier.height(34.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (photoUri != null || photoUrl.isNotBlank()) "Change Profile Photo" else "Upload Profile Photo",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Full Name
                 OutlinedTextField(
@@ -1075,7 +1145,8 @@ fun AddEditReporterDialog(
             Button(
                 onClick = {
                     if (name.isNotBlank() && mobile.isNotBlank() && address.isNotBlank()) {
-                        onSave(name.trim(), mobile.trim(), address.trim(), photoUrl)
+                        val finalPhoto = if (photoUrl.isNotBlank()) photoUrl else "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
+                        onSave(name.trim(), mobile.trim(), address.trim(), finalPhoto)
                     }
                 },
                 enabled = name.isNotBlank() && mobile.isNotBlank() && address.isNotBlank(),
