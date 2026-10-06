@@ -1,5 +1,9 @@
 package com.example.data.firebase
 
+import android.content.Context
+import android.net.Uri
+import android.util.Log
+import com.example.data.bunny.BunnyStorageHelper
 import com.example.data.model.AppPolicy
 import com.example.data.model.MediaType
 import com.example.data.model.Post
@@ -9,12 +13,11 @@ import com.example.data.model.Reporter
 import com.example.data.model.UserProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -22,13 +25,12 @@ import org.json.JSONObject
 import java.util.UUID
 
 object FirebaseRepository {
+    private const val TAG = "FirebaseRepository"
     const val RTDB_BASE_URL = "https://drikq-f9a39-default-rtdb.asia-southeast1.firebasedatabase.app"
-    const val PROJECT_ID = "project-825493226391"
 
     private val httpClient = OkHttpClient()
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    // Current State
     private val _currentUser = MutableStateFlow<UserProfile?>(null)
     val currentUser: StateFlow<UserProfile?> = _currentUser.asStateFlow()
 
@@ -56,48 +58,7 @@ object FirebaseRepository {
     val notifications: StateFlow<List<PushNotificationItem>> = _notifications.asStateFlow()
 
     init {
-        seedInitialData()
         fetchFromRemoteRtdb()
-    }
-
-    private fun seedInitialData() {
-        _reporters.value = emptyList()
-
-        val post1 = Post(
-            id = "post-101",
-            title = "New High-Speed Metro Corridor Inaugurated in City Center",
-            description = "The state-of-the-art elevated metro corridor spans 18 kilometers, reducing peak-hour commute times by over 45 minutes. Thousands gathered for the inaugural flag-off ceremony this morning.",
-            place = "Downtown Metro Junction",
-            mediaType = MediaType.VIDEO,
-            mediaUrl = "https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1080&q=80",
-            thumbnailUrl = "https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=1080&q=80",
-            reporterId = "REP-EDITORIAL",
-            reporterName = "City Bureau Desk",
-            reporterPhotoUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-            status = PostStatus.APPROVED,
-            likesCount = 342,
-            viewsCount = 4120,
-            timestamp = System.currentTimeMillis() - 3600000 * 4
-        )
-
-        val post2 = Post(
-            id = "post-102",
-            title = "Historic Heritage Walk Draws Hundreds of International Travelers",
-            description = "Old town architecture was illuminated at sunset as local historians guided citizens through ancient stone temples and restored colonial landmarks.",
-            place = "Old Heritage Quarter",
-            mediaType = MediaType.PHOTO,
-            mediaUrl = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1080&q=80",
-            thumbnailUrl = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1080&q=80",
-            reporterId = "REP-EDITORIAL",
-            reporterName = "City Bureau Desk",
-            reporterPhotoUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-            status = PostStatus.APPROVED,
-            likesCount = 512,
-            viewsCount = 6200,
-            timestamp = System.currentTimeMillis() - 3600000 * 12
-        )
-
-        _posts.value = listOf(post1, post2)
     }
 
     private fun fetchFromRemoteRtdb() {
@@ -151,14 +112,55 @@ object FirebaseRepository {
                                     )
                                 }
                             }
-                            if (list.isNotEmpty()) {
-                                _reporters.value = list
+                            _reporters.value = list
+                        }
+                    }
+                }
+
+                // Fetch posts from RTDB
+                val postsReq = Request.Builder()
+                    .url("$RTDB_BASE_URL/posts.json")
+                    .get()
+                    .build()
+                httpClient.newCall(postsReq).execute().use { postResponse ->
+                    if (postResponse.isSuccessful) {
+                        val body = postResponse.body?.string()
+                        if (!body.isNullOrBlank() && body != "null") {
+                            val json = JSONObject(body)
+                            val list = mutableListOf<Post>()
+                            val keys = json.keys()
+                            while (keys.hasNext()) {
+                                val key = keys.next()
+                                val obj = json.optJSONObject(key)
+                                if (obj != null) {
+                                    val statusStr = obj.optString("status", "PENDING").uppercase()
+                                    val mediaTypeStr = obj.optString("mediaType", "VIDEO").uppercase()
+                                    list.add(
+                                        Post(
+                                            id = obj.optString("id", key),
+                                            title = obj.optString("title"),
+                                            description = obj.optString("description"),
+                                            place = obj.optString("place"),
+                                            mediaType = if (mediaTypeStr == "PHOTO") MediaType.PHOTO else MediaType.VIDEO,
+                                            mediaUrl = obj.optString("mediaUrl"),
+                                            thumbnailUrl = obj.optString("thumbnailUrl", obj.optString("mediaUrl")),
+                                            reporterId = obj.optString("reporterId"),
+                                            reporterName = obj.optString("reporterName"),
+                                            reporterPhotoUrl = obj.optString("reporterPhotoUrl"),
+                                            status = if (statusStr == "APPROVED") PostStatus.APPROVED else PostStatus.PENDING,
+                                            likesCount = obj.optInt("likesCount", 0),
+                                            viewsCount = obj.optInt("viewsCount", 0),
+                                            timestamp = obj.optLong("timestamp", System.currentTimeMillis())
+                                        )
+                                    )
+                                }
                             }
+                            _posts.value = list.sortedByDescending { it.timestamp }
                         }
                     }
                 }
             } catch (e: Exception) {
-                // Silently fallback to cached state
+                Log.e(TAG, "Error fetching from RTDB: ${e.message}")
             }
         }
     }
@@ -168,7 +170,7 @@ object FirebaseRepository {
             uid = "usr_" + UUID.randomUUID().toString().take(8),
             name = displayName,
             email = email,
-            photoUrl = photoUrl.ifBlank { "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80" }
+            photoUrl = photoUrl
         )
         _currentUser.value = user
     }
@@ -193,182 +195,226 @@ object FirebaseRepository {
         _currentReporter.value = null
     }
 
-    fun authenticateAdmin(pinOrPassword: String): Boolean {
-        val clean = pinOrPassword.trim()
-        // Admin credentials: accepts admin / admin123 or 1234
-        val success = clean == "admin" || clean == "admin123" || clean == "1234"
-        if (success) {
+    fun loginAdmin(passcode: String): Boolean {
+        return if (passcode.trim() == "admin" || passcode.trim() == "admin123") {
             _isAdminLoggedIn.value = true
+            true
+        } else {
+            false
         }
-        return success
     }
 
     fun logoutAdmin() {
         _isAdminLoggedIn.value = false
     }
 
-    suspend fun uploadPost(
+    /**
+     * Uploads media to Bunny.net Edge Storage and saves post metadata to Firebase RTDB.
+     */
+    suspend fun uploadPostWithBunny(
+        context: Context,
+        fileUri: Uri,
         title: String,
         description: String,
         place: String,
         mediaType: MediaType,
-        mediaUrl: String,
         reporter: Reporter,
         onProgress: (Int) -> Unit
-    ): Post {
-        // Real-time simulated upload progress 0 to 100%
-        for (p in 0..100 step 10) {
-            delay(120)
-            onProgress(p)
+    ): Result<Post> {
+        val ext = if (mediaType == MediaType.VIDEO) "mp4" else "jpg"
+        val mimeType = if (mediaType == MediaType.VIDEO) "video/mp4" else "image/jpeg"
+        val uniqueFileName = "${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}.$ext"
+
+        // 1. Upload to Bunny.net
+        val bunnyResult = BunnyStorageHelper.uploadFile(
+            context = context,
+            fileUri = fileUri,
+            folder = "posts",
+            fileName = uniqueFileName,
+            mimeType = mimeType,
+            onProgress = onProgress
+        )
+
+        if (bunnyResult.isFailure) {
+            return Result.failure(bunnyResult.exceptionOrNull() ?: Exception("Bunny upload failed"))
         }
 
-        val newPost = Post(
-            id = "post-" + UUID.randomUUID().toString().take(8),
+        val publicCdnUrl = bunnyResult.getOrThrow()
+        val postId = "post-${UUID.randomUUID().toString().take(8)}"
+
+        val post = Post(
+            id = postId,
             title = title,
             description = description,
             place = place,
             mediaType = mediaType,
-            mediaUrl = mediaUrl.ifBlank {
-                if (mediaType == MediaType.VIDEO)
-                    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1080&q=80"
-                else
-                    "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1080&q=80"
-            },
-            thumbnailUrl = mediaUrl.ifBlank {
-                "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=1080&q=80"
-            },
+            mediaUrl = publicCdnUrl,
+            thumbnailUrl = publicCdnUrl,
             reporterId = reporter.id,
             reporterName = reporter.name,
             reporterPhotoUrl = reporter.photoUrl,
-            status = PostStatus.PENDING, // Uploaded content status should be "pending" by default
-            likesCount = 0,
-            viewsCount = 1,
+            status = PostStatus.PENDING,
             timestamp = System.currentTimeMillis()
         )
 
-        _posts.value = listOf(newPost) + _posts.value
+        // 2. Save metadata into local state and Firebase RTDB
+        _posts.value = listOf(post) + _posts.value
 
-        // Async write to Firebase RTDB
         scope.launch {
             try {
                 val json = JSONObject().apply {
-                    put("id", newPost.id)
-                    put("title", newPost.title)
-                    put("description", newPost.description)
-                    put("place", newPost.place)
-                    put("mediaType", newPost.mediaType.name)
-                    put("mediaUrl", newPost.mediaUrl)
-                    put("reporterId", newPost.reporterId)
-                    put("reporterName", newPost.reporterName)
-                    put("status", newPost.status.name)
-                    put("timestamp", newPost.timestamp)
+                    put("id", post.id)
+                    put("title", post.title)
+                    put("description", post.description)
+                    put("place", post.place)
+                    put("mediaType", post.mediaType.name)
+                    put("mediaUrl", post.mediaUrl)
+                    put("thumbnailUrl", post.thumbnailUrl)
+                    put("reporterId", post.reporterId)
+                    put("reporterName", post.reporterName)
+                    put("reporterPhotoUrl", post.reporterPhotoUrl)
+                    put("status", "PENDING")
+                    put("likesCount", 0)
+                    put("viewsCount", 0)
+                    put("timestamp", post.timestamp)
                 }
-                val body = json.toString().toRequestBody("application/json".toMediaType())
+
+                val body = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
                 val request = Request.Builder()
-                    .url("$RTDB_BASE_URL/posts/${newPost.id}.json")
+                    .url("$RTDB_BASE_URL/posts/${post.id}.json")
                     .put(body)
                     .build()
                 httpClient.newCall(request).execute().close()
-            } catch (ignored: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving post to RTDB: ${e.message}")
+            }
         }
 
-        return newPost
+        return Result.success(post)
+    }
+
+    /**
+     * Creates new reporter, uploading profile photo to Bunny.net if a Uri is supplied.
+     */
+    suspend fun createReporterWithBunny(
+        context: Context,
+        name: String,
+        mobile: String,
+        address: String,
+        photoUri: Uri?
+    ): Reporter {
+        val randomNum = (1000..9999).random()
+        val generatedId = "REP-$randomNum"
+        val generatedPass = "Drikq#" + (100000..999999).random()
+
+        var publicPhotoUrl = ""
+
+        if (photoUri != null) {
+            val fileName = "profile_${generatedId}_${System.currentTimeMillis()}.jpg"
+            val result = BunnyStorageHelper.uploadFile(
+                context = context,
+                fileUri = photoUri,
+                folder = "profiles",
+                fileName = fileName,
+                mimeType = "image/jpeg",
+                onProgress = {}
+            )
+            publicPhotoUrl = result.getOrDefault("")
+        }
+
+        val reporter = Reporter(
+            id = generatedId,
+            name = name,
+            mobile = mobile,
+            address = address,
+            photoUrl = publicPhotoUrl,
+            password = generatedPass,
+            followersCount = 0,
+            followingCount = 0
+        )
+
+        _reporters.value = _reporters.value + reporter
+
+        scope.launch {
+            try {
+                val json = JSONObject().apply {
+                    put("id", reporter.id)
+                    put("name", reporter.name)
+                    put("mobile", reporter.mobile)
+                    put("address", reporter.address)
+                    put("photoUrl", reporter.photoUrl)
+                    put("password", reporter.password)
+                    put("followersCount", 0)
+                    put("followingCount", 0)
+                }
+                val body = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
+                val request = Request.Builder()
+                    .url("$RTDB_BASE_URL/reporters/${reporter.id}.json")
+                    .put(body)
+                    .build()
+                httpClient.newCall(request).execute().close()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving reporter to RTDB: ${e.message}")
+            }
+        }
+
+        return reporter
     }
 
     fun approvePost(postId: String) {
-        _posts.value = _posts.value.map {
-            if (it.id == postId) it.copy(status = PostStatus.APPROVED) else it
-        }
-        scope.launch {
-            try {
-                val body = "\"APPROVED\"".toRequestBody("application/json".toMediaType())
-                val request = Request.Builder()
-                    .url("$RTDB_BASE_URL/posts/$postId/status.json")
-                    .put(body)
-                    .build()
-                httpClient.newCall(request).execute().close()
-            } catch (ignored: Exception) {}
+        val list = _posts.value.toMutableList()
+        val index = list.indexOfFirst { it.id == postId }
+        if (index != -1) {
+            val current = list[index]
+            val updated = current.copy(status = PostStatus.APPROVED)
+            list[index] = updated
+            _posts.value = list
+
+            scope.launch {
+                try {
+                    val body = "\"APPROVED\"".toRequestBody("application/json".toMediaTypeOrNull())
+                    val request = Request.Builder()
+                        .url("$RTDB_BASE_URL/posts/$postId/status.json")
+                        .put(body)
+                        .build()
+                    httpClient.newCall(request).execute().close()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error approving post in RTDB: ${e.message}")
+                }
+            }
         }
     }
 
+    /**
+     * Deletes post from local state, RTDB, AND deletes the file from Bunny Storage!
+     */
     fun deletePost(postId: String) {
-        _posts.value = _posts.value.filterNot { it.id == postId }
+        val postToDelete = _posts.value.find { it.id == postId }
+        _posts.value = _posts.value.filter { it.id != postId }
+
         scope.launch {
             try {
+                // Delete from Firebase RTDB
                 val request = Request.Builder()
                     .url("$RTDB_BASE_URL/posts/$postId.json")
                     .delete()
                     .build()
                 httpClient.newCall(request).execute().close()
-            } catch (ignored: Exception) {}
-        }
-    }
 
-    fun toggleLike(postId: String, userId: String) {
-        _posts.value = _posts.value.map { post ->
-            if (post.id == postId) {
-                val alreadyLiked = post.likedByUsers.contains(userId)
-                val newLikedBy = if (alreadyLiked) post.likedByUsers - userId else post.likedByUsers + userId
-                val newCount = if (alreadyLiked) maxOf(0, post.likesCount - 1) else post.likesCount + 1
-                post.copy(likesCount = newCount, likedByUsers = newLikedBy)
-            } else post
-        }
-    }
-
-    fun incrementView(postId: String) {
-        _posts.value = _posts.value.map { post ->
-            if (post.id == postId) post.copy(viewsCount = post.viewsCount + 1) else post
-        }
-    }
-
-    fun createReporter(name: String, mobile: String, address: String, photoUrl: String): Reporter {
-        val randomNum = (1000..9999).random()
-        val generatedId = "REP-$randomNum"
-        val generatedPassword = "Drikq#" + (100000..999999).random()
-
-        val newReporter = Reporter(
-            id = generatedId,
-            name = name,
-            mobile = mobile,
-            address = address,
-            photoUrl = photoUrl.ifBlank {
-                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
-            },
-            password = generatedPassword,
-            followersCount = 0,
-            followingCount = 0
-        )
-
-        _reporters.value = _reporters.value + newReporter
-
-        scope.launch {
-            try {
-                val json = JSONObject().apply {
-                    put("id", newReporter.id)
-                    put("name", newReporter.name)
-                    put("mobile", newReporter.mobile)
-                    put("address", newReporter.address)
-                    put("photoUrl", newReporter.photoUrl)
-                    put("password", newReporter.password)
+                // Delete from Bunny Edge Storage
+                if (postToDelete != null && postToDelete.mediaUrl.isNotBlank()) {
+                    BunnyStorageHelper.deleteFile(postToDelete.mediaUrl)
                 }
-                val body = json.toString().toRequestBody("application/json".toMediaType())
-                val request = Request.Builder()
-                    .url("$RTDB_BASE_URL/reporters/${newReporter.id}.json")
-                    .put(body)
-                    .build()
-                httpClient.newCall(request).execute().close()
-            } catch (ignored: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting post: ${e.message}")
+            }
         }
-
-        return newReporter
-    }
-
-    fun updateReporter(reporter: Reporter) {
-        _reporters.value = _reporters.value.map { if (it.id == reporter.id) reporter else it }
     }
 
     fun deleteReporter(reporterId: String) {
-        _reporters.value = _reporters.value.filterNot { it.id == reporterId }
+        val rep = _reporters.value.find { it.id == reporterId }
+        _reporters.value = _reporters.value.filter { it.id != reporterId }
+
         scope.launch {
             try {
                 val request = Request.Builder()
@@ -376,42 +422,113 @@ object FirebaseRepository {
                     .delete()
                     .build()
                 httpClient.newCall(request).execute().close()
-            } catch (ignored: Exception) {}
+
+                // Also delete avatar if stored on Bunny
+                if (rep != null && rep.photoUrl.isNotBlank() && rep.photoUrl.contains(BunnyStorageHelper.PUBLIC_CDN_BASE_URL)) {
+                    BunnyStorageHelper.deleteFile(rep.photoUrl)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting reporter: ${e.message}")
+            }
         }
     }
 
-    fun toggleFollowReporter(reporterId: String, currentUserId: String) {
-        _reporters.value = _reporters.value.map { rep ->
-            if (rep.id == reporterId) {
-                val isFollowed = rep.followedByUsers.contains(currentUserId)
-                val newFollowers = if (isFollowed) rep.followedByUsers - currentUserId else rep.followedByUsers + currentUserId
-                val newCount = if (isFollowed) maxOf(0, rep.followersCount - 1) else rep.followersCount + 1
-                rep.copy(followersCount = newCount, followedByUsers = newFollowers)
-            } else rep
+    fun toggleLike(postId: String, userId: String) {
+        val list = _posts.value.toMutableList()
+        val index = list.indexOfFirst { it.id == postId }
+        if (index != -1) {
+            val post = list[index]
+            val liked = post.likedByUsers.contains(userId)
+            val updatedLikes = if (liked) {
+                post.likedByUsers.remove(userId)
+                (post.likesCount - 1).coerceAtLeast(0)
+            } else {
+                post.likedByUsers.add(userId)
+                post.likesCount + 1
+            }
+            list[index] = post.copy(likesCount = updatedLikes)
+            _posts.value = list
+
+            scope.launch {
+                try {
+                    val body = "$updatedLikes".toRequestBody("application/json".toMediaTypeOrNull())
+                    val request = Request.Builder()
+                        .url("$RTDB_BASE_URL/posts/$postId/likesCount.json")
+                        .put(body)
+                        .build()
+                    httpClient.newCall(request).execute().close()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error updating likes in RTDB: ${e.message}")
+                }
+            }
         }
     }
 
-    fun updatePrivacyPolicy(policyText: String, termsText: String) {
-        _policy.value = AppPolicy(privacyPolicy = policyText, termsAndConditions = termsText)
+    fun recordView(postId: String) {
+        val list = _posts.value.toMutableList()
+        val index = list.indexOfFirst { it.id == postId }
+        if (index != -1) {
+            val post = list[index]
+            val updatedViews = post.viewsCount + 1
+            list[index] = post.copy(viewsCount = updatedViews)
+            _posts.value = list
+
+            scope.launch {
+                try {
+                    val body = "$updatedViews".toRequestBody("application/json".toMediaTypeOrNull())
+                    val request = Request.Builder()
+                        .url("$RTDB_BASE_URL/posts/$postId/viewsCount.json")
+                        .put(body)
+                        .build()
+                    httpClient.newCall(request).execute().close()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error recording view in RTDB: ${e.message}")
+                }
+            }
+        }
+    }
+
+    fun toggleFollowReporter(reporterId: String, userId: String) {
+        val list = _reporters.value.toMutableList()
+        val index = list.indexOfFirst { it.id == reporterId }
+        if (index != -1) {
+            val rep = list[index]
+            val following = rep.followedByUsers.contains(userId)
+            val updatedFollowers = if (following) {
+                rep.followedByUsers.remove(userId)
+                (rep.followersCount - 1).coerceAtLeast(0)
+            } else {
+                rep.followedByUsers.add(userId)
+                rep.followersCount + 1
+            }
+            list[index] = rep.copy(followersCount = updatedFollowers)
+            _reporters.value = list
+        }
+    }
+
+    fun updatePolicy(newPolicy: String, newTerms: String) {
+        _policy.value = AppPolicy(newPolicy, newTerms)
         scope.launch {
             try {
                 val json = JSONObject().apply {
-                    put("privacyPolicy", policyText)
-                    put("termsAndConditions", termsText)
+                    put("privacyPolicy", newPolicy)
+                    put("termsAndConditions", newTerms)
                 }
-                val body = json.toString().toRequestBody("application/json".toMediaType())
+                val body = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
                 val request = Request.Builder()
                     .url("$RTDB_BASE_URL/settings/policy.json")
                     .put(body)
                     .build()
                 httpClient.newCall(request).execute().close()
-            } catch (ignored: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating policy in RTDB: ${e.message}")
+            }
         }
     }
 
-    fun sendPushNotification(title: String, body: String, postId: String?): PushNotificationItem {
+    fun sendPushBroadcast(title: String, body: String, postId: String?) {
         val item = PushNotificationItem(
-            id = "notif-" + UUID.randomUUID().toString().take(6),
+            id = "notif-${UUID.randomUUID().toString().take(6)}",
             title = title,
             body = body,
             postId = postId,
@@ -428,15 +545,15 @@ object FirebaseRepository {
                     put("postId", item.postId ?: "")
                     put("timestamp", item.timestamp)
                 }
-                val reqBody = json.toString().toRequestBody("application/json".toMediaType())
+                val reqBody = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
                 val request = Request.Builder()
                     .url("$RTDB_BASE_URL/notifications/${item.id}.json")
                     .put(reqBody)
                     .build()
                 httpClient.newCall(request).execute().close()
-            } catch (ignored: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Error broadcasting notification: ${e.message}")
+            }
         }
-
-        return item
     }
 }

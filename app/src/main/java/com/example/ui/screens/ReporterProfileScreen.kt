@@ -1,8 +1,6 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,14 +23,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -46,15 +42,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.firebase.FirebaseRepository
-import com.example.data.model.Post
 import com.example.data.model.PostStatus
 import com.example.ui.theme.BorderSlate
 import com.example.ui.theme.DarkBackground
@@ -66,18 +59,24 @@ import com.example.ui.theme.SlateGray
 fun ReporterProfileScreen(
     reporterId: String,
     onBack: () -> Unit,
-    onPostClick: (Post) -> Unit,
+    onPostClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val reporters by FirebaseRepository.reporters.collectAsState()
-    val allPosts by FirebaseRepository.posts.collectAsState()
+    val posts by FirebaseRepository.posts.collectAsState()
     val currentUser by FirebaseRepository.currentUser.collectAsState()
+    val currentUserId = currentUser?.uid ?: "guest"
 
-    val reporter = reporters.find { it.id == reporterId } ?: reporters.firstOrNull()
-    val reporterPosts = allPosts.filter { it.reporterId == reporterId && it.status == PostStatus.APPROVED }
+    val reporter = reporters.find { it.id == reporterId } ?: com.example.data.model.Reporter(
+        id = reporterId,
+        name = "Staff Reporter",
+        mobile = "",
+        address = "Ground Bureau"
+    )
 
-    val currentUid = currentUser?.uid ?: "guest"
-    val isFollowed = reporter?.followedByUsers?.contains(currentUid) == true
+    val reporterPosts = posts.filter { it.reporterId == reporterId && it.status == PostStatus.APPROVED }
+    val isFollowed = reporter.followedByUsers.contains(currentUserId)
 
     Box(
         modifier = modifier
@@ -86,287 +85,132 @@ fun ReporterProfileScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // App Bar
-            Surface(
-                color = DarkSurface,
-                shadowElevation = 4.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier.testTag("reporter_profile_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Reporter Profile",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Reporter Profile", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
-            }
 
-            if (reporter == null) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Reporter profile not found", color = SlateGray)
-                }
-                return@Column
-            }
+                Spacer(modifier = Modifier.height(16.dp))
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                item {
-                    // Header card
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(reporter.photoUrl.ifBlank { "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80" })
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = reporter.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(90.dp).clip(CircleShape).background(DarkBackground)
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(reporter.name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(Icons.Default.Verified, contentDescription = "Verified", tint = Color(0xFF60A5FA), modifier = Modifier.size(18.dp))
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.LocationOn, contentDescription = null, tint = NewsRed, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(reporter.address, color = SlateGray, fontSize = 12.sp)
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Stats
+                        Surface(
+                            color = DarkBackground,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Profile picture
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(reporter.photoUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = reporter.name,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(90.dp)
-                                    .clip(CircleShape)
-                                    .border(3.dp, NewsRed, CircleShape)
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Name with verified icon
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = reporter.name,
-                                    color = Color.White,
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Verified,
-                                    contentDescription = "Verified Reporter",
-                                    tint = Color(0xFF60A5FA),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.LocationOn,
-                                    contentDescription = null,
-                                    tint = NewsRed,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = reporter.address,
-                                    color = SlateGray,
-                                    fontSize = 12.sp
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // Followers count & Following count & Posts count
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(DarkBackground)
-                                    .padding(vertical = 12.dp),
+                                modifier = Modifier.padding(vertical = 12.dp),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = "${reporter.followersCount}",
-                                        color = Color.White,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "Followers",
-                                        color = SlateGray,
-                                        fontSize = 11.sp
-                                    )
+                                    Text("${reporter.followersCount}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    Text("Followers", color = SlateGray, fontSize = 11.sp)
                                 }
-
-                                Divider(
-                                    modifier = Modifier
-                                        .height(30.dp)
-                                        .width(1.dp),
-                                    color = BorderSlate
-                                )
-
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = "${reporter.followingCount}",
-                                        color = Color.White,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "Following",
-                                        color = SlateGray,
-                                        fontSize = 11.sp
-                                    )
+                                    Text("${reporter.followingCount}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    Text("Following", color = SlateGray, fontSize = 11.sp)
                                 }
-
-                                Divider(
-                                    modifier = Modifier
-                                        .height(30.dp)
-                                        .width(1.dp),
-                                    color = BorderSlate
-                                )
-
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = "${reporterPosts.size}",
-                                        color = Color.White,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "Reports",
-                                        color = SlateGray,
-                                        fontSize = 11.sp
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // Follow Button
-                            val followColor by animateColorAsState(
-                                targetValue = if (isFollowed) Color(0xFF334155) else NewsRed,
-                                label = "rep_follow_color"
-                            )
-                            Button(
-                                onClick = {
-                                    FirebaseRepository.toggleFollowReporter(reporter.id, currentUid)
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = followColor),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp)
-                                    .testTag("reporter_profile_follow_button")
-                            ) {
-                                if (isFollowed) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Following", fontWeight = FontWeight.Bold)
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.PersonAdd,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Follow Reporter", fontWeight = FontWeight.Bold)
+                                    Text("${reporterPosts.size}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    Text("Stories", color = SlateGray, fontSize = 11.sp)
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { FirebaseRepository.toggleFollowReporter(reporter.id, currentUserId) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isFollowed) BorderSlate else NewsRed
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().height(44.dp)
+                        ) {
+                            Icon(if (isFollowed) Icons.Default.Check else Icons.Default.PersonAdd, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isFollowed) "Following" else "Follow Reporter", fontWeight = FontWeight.Bold)
+                        }
                     }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Text(
-                        text = "Published News Stories (${reporterPosts.size})",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                if (reporterPosts.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("No published stories yet", color = SlateGray, fontSize = 13.sp)
-                        }
-                    }
-                } else {
-                    items(reporterPosts, key = { it.id }) { post ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp)
-                                .clickable { onPostClick(post) }
-                                .testTag("reporter_post_item_${post.id}"),
-                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(post.thumbnailUrl)
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = post.title,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(72.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = post.title,
-                                        color = Color.White,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "${post.place} • ${post.likesCount} likes • ${post.viewsCount} views",
-                                        color = SlateGray,
-                                        fontSize = 11.sp
-                                    )
-                                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("Published Eyewitness Stories (${reporterPosts.size})", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            if (reporterPosts.isEmpty()) {
+                item {
+                    Text("No approved news stories published yet by this reporter.", color = SlateGray, fontSize = 13.sp)
+                }
+            } else {
+                items(reporterPosts, key = { it.id }) { post ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp)
+                            .clickable { onPostClick(post.id) },
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context).data(post.thumbnailUrl).crossfade(true).build(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)).background(DarkBackground)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(post.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 2)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("${post.place} • ${post.likesCount} likes", color = SlateGray, fontSize = 11.sp)
                             }
                         }
                     }

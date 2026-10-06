@@ -42,7 +42,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -69,6 +68,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.firebase.FirebaseRepository
 import com.example.data.model.MediaType
+import com.example.data.model.Reporter
 import com.example.ui.theme.BorderSlate
 import com.example.ui.theme.DarkBackground
 import com.example.ui.theme.DarkSurface
@@ -160,17 +160,19 @@ fun ReporterUploadScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(reporter?.photoUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            if (reporter?.photoUrl?.isNotBlank() == true) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(reporter?.photoUrl)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
                             Text(
                                 text = reporter?.id ?: "",
                                 color = NewsRed,
@@ -201,7 +203,6 @@ fun ReporterUploadScreen(
                         .weight(1f)
                         .clickable(enabled = !isUploading) {
                             mediaType = MediaType.VIDEO
-                            // Open real video gallery
                             mediaPickerLauncher.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
                             )
@@ -245,7 +246,6 @@ fun ReporterUploadScreen(
                         .weight(1f)
                         .clickable(enabled = !isUploading) {
                             mediaType = MediaType.PHOTO
-                            // Open real photo gallery
                             mediaPickerLauncher.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                             )
@@ -286,7 +286,7 @@ fun ReporterUploadScreen(
 
             // Step 2: Media Preview / Real Device Gallery Picker Box
             Text(
-                text = "2. CHOOSE FILE FROM PHONE GALLERY",
+                text = "2. CHOOSE FILE (BUNNY.NET EDGE STORAGE)",
                 color = SlateGray,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -311,7 +311,6 @@ fun ReporterUploadScreen(
                 border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate)
             ) {
                 if (selectedMediaUri != null) {
-                    // Show the actual selected video/photo as preview
                     Box(modifier = Modifier.fillMaxSize()) {
                         AsyncImage(
                             model = ImageRequest.Builder(context)
@@ -342,7 +341,7 @@ fun ReporterUploadScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (mediaType == MediaType.VIDEO) "Video selected from gallery (Tap to change)" else "Photo selected from gallery (Tap to change)",
+                                    text = if (mediaType == MediaType.VIDEO) "Video selected (Tap to change)" else "Photo selected (Tap to change)",
                                     color = Color.White,
                                     fontSize = 11.sp
                                 )
@@ -350,7 +349,6 @@ fun ReporterUploadScreen(
                         }
                     }
                 } else {
-                    // Placeholder prompting user to open gallery
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -379,9 +377,9 @@ fun ReporterUploadScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Opens real phone media picker",
+                            text = "Direct Edge PUT Upload to Bunny.net (Zone: drikq-news)",
                             color = SlateGray,
-                            fontSize = 12.sp
+                            fontSize = 11.sp
                         )
                     }
                 }
@@ -407,7 +405,7 @@ fun ReporterUploadScreen(
                     validationError = null
                 },
                 label = { Text("Headline / Title *") },
-                placeholder = { Text("e.g. Breaking: Major Water Pipeline Restored") },
+                placeholder = { Text("e.g. Breaking: High-Speed Flyover Opens to Public") },
                 singleLine = false,
                 maxLines = 2,
                 colors = OutlinedTextFieldDefaults.colors(
@@ -434,7 +432,7 @@ fun ReporterUploadScreen(
                     validationError = null
                 },
                 label = { Text("Place / Location Name *") },
-                placeholder = { Text("e.g. Central Market Square, Ward 12") },
+                placeholder = { Text("e.g. Sector 5, Downtown Crossway") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.LocationOn,
@@ -467,7 +465,7 @@ fun ReporterUploadScreen(
                     validationError = null
                 },
                 label = { Text("Full News Description *") },
-                placeholder = { Text("Provide complete eyewitness details, confirmed facts, and impact on local residents...") },
+                placeholder = { Text("Provide complete eyewitness details, verified facts, and ground impact...") },
                 minLines = 4,
                 maxLines = 8,
                 colors = OutlinedTextFieldDefaults.colors(
@@ -512,7 +510,7 @@ fun ReporterUploadScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Uploading to Firebase Storage...",
+                                text = "Uploading to Bunny.net Edge Storage...",
                                 color = Color.White,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -536,7 +534,7 @@ fun ReporterUploadScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Compressing stream & syncing metadata (Status: Pending)",
+                            text = "Target: https://sg.storage.bunnycdn.com/drikq-news/posts/",
                             color = SlateGray,
                             fontSize = 11.sp
                         )
@@ -548,7 +546,7 @@ fun ReporterUploadScreen(
             Button(
                 onClick = {
                     if (selectedMediaUri == null) {
-                        validationError = "Please select a ${if (mediaType == MediaType.VIDEO) "video" else "photo"} from your phone gallery"
+                        validationError = "Please select a ${if (mediaType == MediaType.VIDEO) "video" else "photo"} from your gallery"
                         return@Button
                     }
                     if (title.isBlank()) {
@@ -564,31 +562,37 @@ fun ReporterUploadScreen(
                         return@Button
                     }
 
-                    val currentRep = reporter ?: FirebaseRepository.reporters.value.firstOrNull()
-                        ?: com.example.data.model.Reporter(
-                            id = "REP-LOCAL",
-                            name = "Ground Journalist",
-                            mobile = "+91 98000 00000",
-                            address = place
-                        )
+                    val currentRep = reporter ?: Reporter(
+                        id = "REP-DIRECT",
+                        name = "Staff Reporter",
+                        mobile = "+91 98000 00000",
+                        address = place
+                    )
 
                     isUploading = true
+                    uploadProgress = 0
                     validationError = null
 
                     coroutineScope.launch {
-                        FirebaseRepository.uploadPost(
+                        val result = FirebaseRepository.uploadPostWithBunny(
+                            context = context,
+                            fileUri = selectedMediaUri!!,
                             title = title.trim(),
                             description = description.trim(),
                             place = place.trim(),
                             mediaType = mediaType,
-                            mediaUrl = selectedMediaUri.toString(),
                             reporter = currentRep,
                             onProgress = { p -> uploadProgress = p }
                         )
-                        Toast.makeText(context, "News submitted! Status: Pending Editorial Approval", Toast.LENGTH_LONG).show()
-                        delay(600)
-                        // After successful upload -> automatically redirect to Home Feed
-                        onUploadCompleteRedirectToFeed()
+
+                        if (result.isSuccess) {
+                            Toast.makeText(context, "Uploaded to Bunny CDN! Status: Pending Approval", Toast.LENGTH_LONG).show()
+                            delay(400)
+                            onUploadCompleteRedirectToFeed()
+                        } else {
+                            isUploading = false
+                            validationError = "Bunny upload failed: ${result.exceptionOrNull()?.message}"
+                        }
                     }
                 },
                 enabled = !isUploading,
@@ -606,7 +610,7 @@ fun ReporterUploadScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isUploading) "Uploading ($uploadProgress%)..." else "Submit News for Approval",
+                    text = if (isUploading) "Uploading to Bunny ($uploadProgress%)..." else "Submit News for Approval",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White

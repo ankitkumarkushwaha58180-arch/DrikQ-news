@@ -1,6 +1,6 @@
 {
   "name": "Drikq News",
-  "description": "Reporter news feed, reporter upload portal, and admin management powered by Firebase",
+  "description": "Production-ready ground news reporting platform with Bunny.net Edge Storage and Firebase Realtime Database.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

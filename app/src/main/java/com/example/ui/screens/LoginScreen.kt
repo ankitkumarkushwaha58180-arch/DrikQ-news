@@ -76,7 +76,7 @@ fun LoginScreen(
     var emailError by remember { mutableStateOf<String?>(null) }
     var isSigningIn by remember { mutableStateOf(false) }
 
-    // Real System Google Account Chooser launcher
+    // Real System Google Account Chooser
     val accountPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -88,7 +88,6 @@ fun LoginScreen(
                     .replace(".", " ")
                     .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
-                // Sign in with Firebase Auth & update Repository
                 try {
                     FirebaseAuth.getInstance().signInAnonymously()
                 } catch (ignored: Exception) {}
@@ -166,7 +165,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Direct Ground-Level Reporting & Verified News Feeds",
+                text = "Direct Ground-Level Reporting • Bunny.net Fast CDN Stream",
                 color = SlateGray,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center,
@@ -175,7 +174,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Proper Google Sign-In with real system account chooser
+            // Google Sign-In button
             GoogleSignInButton(
                 onClick = {
                     isSigningIn = true
@@ -191,7 +190,6 @@ fun LoginScreen(
                         )
                         accountPickerLauncher.launch(intent)
                     } catch (e: ActivityNotFoundException) {
-                        // In case the device/emulator does not have Google Play account manager installed
                         isSigningIn = false
                         showManualAccountPrompt = true
                     } catch (e: Exception) {
@@ -206,16 +204,14 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Select any Google account present on your device to continue.",
+                text = "Sign in with your device Google account to access verified news.",
                 color = Color.White.copy(alpha = 0.5f),
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center
             )
         }
 
-        // At the very bottom of the screen (fixed):
-        // Left side: "Reporter Login" button
-        // Right side: "Admin Panel" button
+        // At the very bottom: Left: Reporter Login | Right: Admin Panel
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -273,7 +269,7 @@ fun LoginScreen(
         }
     }
 
-    // Google Sign-In Fallback (if device has no Google accounts configured yet)
+    // Google Sign-In Dialog fallback for devices without Play services account manager
     if (showManualAccountPrompt) {
         AlertDialog(
             onDismissRequest = { showManualAccountPrompt = false },

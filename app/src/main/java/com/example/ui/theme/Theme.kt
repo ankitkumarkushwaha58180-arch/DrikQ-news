@@ -1,70 +1,48 @@
 package com.example.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
+import android.app.Activity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = NewsRed,
     onPrimary = Color.White,
-    primaryContainer = NewsRedDark,
+    primaryContainer = NewsDarkRed,
     onPrimaryContainer = Color.White,
-    secondary = AccentBlue,
-    onSecondary = Color.White,
-    secondaryContainer = SurfaceNavy,
-    onSecondaryContainer = Color.White,
     background = DarkBackground,
+    onBackground = Color.White,
     surface = DarkSurface,
-    onBackground = Color(0xFFF1F5F9),
-    onSurface = Color(0xFFF1F5F9),
+    onSurface = Color.White,
     surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = Color(0xFFCBD5E1),
+    onSurfaceVariant = SlateGray,
     outline = BorderSlate
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = NewsRed,
-    onPrimary = Color.White,
-    primaryContainer = NewsRedLight,
-    onPrimaryContainer = NewsRedDark,
-    secondary = AccentBlue,
-    onSecondary = Color.White,
-    secondaryContainer = SlateLightGray,
-    onSecondaryContainer = DeepNavy,
-    background = SlateLight,
-    surface = Color.White,
-    onBackground = DeepNavy,
-    onSurface = DeepNavy,
-    surfaceVariant = Color(0xFFF1F5F9),
-    onSurfaceVariant = SlateGray,
-    outline = SlateLightGray
-)
-
 @Composable
-fun MyApplicationTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Keep branded news identity
+fun DrikqNewsTheme(
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val colorScheme = DarkColorScheme
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window
+            if (window != null) {
+                window.statusBarColor = DarkBackground.toArgb()
+                window.navigationBarColor = DarkBackground.toArgb()
+                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            }
         }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
         content = content
     )
 }

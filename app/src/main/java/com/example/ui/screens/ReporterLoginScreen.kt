@@ -1,7 +1,6 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,14 +14,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Visibility
@@ -31,8 +31,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -40,21 +38,18 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.firebase.FirebaseRepository
@@ -64,20 +59,16 @@ import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.NewsRed
 import com.example.ui.theme.SlateGray
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReporterLoginScreen(
     onLoginSuccess: () -> Unit,
-    onBackToMainLogin: () -> Unit,
+    onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var userId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
-
-    val reporters by FirebaseRepository.reporters.collectAsState()
 
     Box(
         modifier = modifier
@@ -89,15 +80,16 @@ fun ReporterLoginScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp)
         ) {
-            // Top back bar
+            // Top Navigation Bar
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
-                    onClick = onBackToMainLogin,
+                    onClick = onBack,
                     modifier = Modifier.testTag("reporter_back_button")
                 ) {
                     Icon(
@@ -115,12 +107,13 @@ fun ReporterLoginScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            // Header Banner
+            // Informational Card
             Card(
                 colors = CardDefaults.cardColors(containerColor = DarkSurface),
                 shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -128,9 +121,8 @@ fun ReporterLoginScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape),
+                        modifier = Modifier.size(48.dp),
+                        shape = CircleShape,
                         color = NewsRed.copy(alpha = 0.15f)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -138,7 +130,7 @@ fun ReporterLoginScreen(
                                 imageVector = Icons.Default.Mic,
                                 contentDescription = null,
                                 tint = NewsRed,
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier.size(26.dp)
                             )
                         }
                     }
@@ -147,11 +139,11 @@ fun ReporterLoginScreen(
                         Text(
                             text = "Ground Reporter Desk",
                             color = Color.White,
-                            fontSize = 17.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Enter the credentials assigned by your News Bureau Admin",
+                            text = "Log in with credentials assigned by your News Bureau Admin.",
                             color = SlateGray,
                             fontSize = 12.sp
                         )

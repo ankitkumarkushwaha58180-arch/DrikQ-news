@@ -56,7 +56,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -64,12 +63,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -78,6 +73,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,16 +82,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.firebase.FirebaseRepository
-import com.example.data.model.MediaType
 import com.example.data.model.Post
 import com.example.data.model.PostStatus
+import com.example.data.model.PushNotificationItem
 import com.example.data.model.Reporter
 import com.example.ui.theme.BorderSlate
 import com.example.ui.theme.DarkBackground
@@ -103,47 +99,31 @@ import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.NewsRed
 import com.example.ui.theme.SlateGray
 import com.example.ui.theme.SuccessGreen
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminPanelScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
     val isAdminLoggedIn by FirebaseRepository.isAdminLoggedIn.collectAsState()
-
-    var adminPassInput by remember { mutableStateOf("admin") }
-    var adminLoginError by remember { mutableStateOf<String?>(null) }
-
-    if (!isAdminLoggedIn) {
-        // Admin Login Barrier Screen
-        AdminLoginGate(
-            passInput = adminPassInput,
-            onPassChange = { adminPassInput = it; adminLoginError = null },
-            errorMessage = adminLoginError,
-            onSubmit = {
-                val ok = FirebaseRepository.authenticateAdmin(adminPassInput)
-                if (!ok) adminLoginError = "Invalid admin password. Default is 'admin' or 'admin123'."
-            },
-            onBack = onBack,
-            modifier = modifier
-        )
-        return
-    }
-
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabTitles = listOf("Reporters", "Content", "Privacy Policy", "Notifications")
-
-    // State for Add/Edit Reporter Dialog
-    var showAddReporterDialog by remember { mutableStateOf(false) }
-    var editingReporter by remember { mutableStateOf<Reporter?>(null) }
-    var newlyCreatedReporter by remember { mutableStateOf<Reporter?>(null) }
-
     val reporters by FirebaseRepository.reporters.collectAsState()
     val posts by FirebaseRepository.posts.collectAsState()
     val policy by FirebaseRepository.policy.collectAsState()
     val notifications by FirebaseRepository.notifications.collectAsState()
+
+    var adminPasscode by remember { mutableStateOf("admin") }
+    var loginError by remember { mutableStateOf<String?>(null) }
+
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val tabTitles = listOf("Reporters", "Content", "Privacy Policy", "Push Alerts")
+
+    var showAddReporterDialog by remember { mutableStateOf(false) }
+    var newlyCreatedReporter by remember { mutableStateOf<Reporter?>(null) }
+    var isSavingReporter by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -152,183 +132,406 @@ fun AdminPanelScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Admin App Bar
-            Surface(
-                color = DarkSurface,
-                shadowElevation = 4.dp
+        if (!isAdminLoggedIn) {
+            // Admin Login Gate
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .align(Alignment.Start)
+                        .testTag("admin_back_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Surface(
+                    modifier = Modifier.size(76.dp),
+                    shape = CircleShape,
+                    color = Color(0xFF2563EB).copy(alpha = 0.2f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = Color(0xFF60A5FA),
+                            modifier = Modifier.size(42.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = "Editorial Admin Access",
+                    color = Color.White,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = "Control reporters, Bunny Storage content, and notifications.",
+                    color = SlateGray,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                OutlinedTextField(
+                    value = adminPasscode,
+                    onValueChange = {
+                        adminPasscode = it
+                        loginError = null
+                    },
+                    label = { Text("Admin Passcode (default: admin)") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF60A5FA))
+                    },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF60A5FA),
+                        unfocusedBorderColor = BorderSlate,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (loginError != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(text = loginError!!, color = NewsRed, fontSize = 13.sp)
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = {
+                        val ok = FirebaseRepository.loginAdmin(adminPasscode)
+                        if (!ok) {
+                            loginError = "Invalid passcode. Use 'admin' or 'admin123'"
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
+                    Text("Enter Editorial Console", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+        } else {
+            // Main Admin Panel
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Admin Header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier.testTag("admin_back_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White
-                            )
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.AdminPanelSettings,
-                            contentDescription = null,
-                            tint = Color(0xFF60A5FA),
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Admin Panel",
+                            text = "Admin Console",
                             color = Color.White,
-                            fontSize = 18.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
                     TextButton(onClick = { FirebaseRepository.logoutAdmin() }) {
-                        Text("Log Out", color = NewsRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Log Out", color = NewsRed, fontWeight = FontWeight.Bold)
                     }
                 }
-            }
 
-            // Tab Navigation
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = DarkSurface,
-                contentColor = Color.White,
-                indicator = { tabPositions ->
-                    TabRowDefaults.PrimaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                        color = NewsRed
-                    )
+                // Tabs
+                ScrollableTabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    containerColor = DarkSurface,
+                    contentColor = Color.White,
+                    edgePadding = 16.dp
+                ) {
+                    tabTitles.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { selectedTabIndex = index },
+                            text = {
+                                Text(
+                                    text = title,
+                                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selectedTabIndex == index) NewsRed else SlateGray
+                                )
+                            }
+                        )
+                    }
                 }
-            ) {
-                tabTitles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = {
-                            Text(
-                                text = title,
-                                fontSize = 12.sp,
-                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedTabIndex == index) Color.White else SlateGray
-                            )
-                        },
-                        modifier = Modifier.testTag("admin_tab_$index")
-                    )
-                }
-            }
 
-            // Content Area based on Tab
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) {
-                when (selectedTabIndex) {
-                    0 -> ReporterManagementSection(
-                        reporters = reporters,
-                        onAddNewClick = {
-                            editingReporter = null
-                            showAddReporterDialog = true
-                        },
-                        onEditClick = { rep ->
-                            editingReporter = rep
-                            showAddReporterDialog = true
-                        },
-                        onDeleteClick = { repId ->
-                            FirebaseRepository.deleteReporter(repId)
-                            Toast.makeText(context, "Reporter deleted", Toast.LENGTH_SHORT).show()
+                // Tab Content
+                Box(modifier = Modifier.weight(1f)) {
+                    when (selectedTabIndex) {
+                        0 -> AdminReportersTab(
+                            reporters = reporters,
+                            onDeleteReporter = { repId -> FirebaseRepository.deleteReporter(repId) }
+                        )
+                        1 -> AdminContentTab(
+                            posts = posts,
+                            onApprove = { id -> FirebaseRepository.approvePost(id) },
+                            onDelete = { id -> FirebaseRepository.deletePost(id) }
+                        )
+                        2 -> AdminPolicyTab(
+                            currentPolicy = policy,
+                            onSave = { p, t ->
+                                FirebaseRepository.updatePolicy(p, t)
+                                Toast.makeText(context, "Policies updated!", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                        3 -> AdminNotificationsTab(
+                            posts = posts,
+                            history = notifications,
+                            onSend = { title, body, postId ->
+                                FirebaseRepository.sendPushBroadcast(title, body, postId)
+                                Toast.makeText(context, "Push broadcasted!", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+
+                    // Floating Action Button to Add Reporter
+                    if (selectedTabIndex == 0) {
+                        FloatingActionButton(
+                            onClick = { showAddReporterDialog = true },
+                            containerColor = NewsRed,
+                            contentColor = Color.White,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(20.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Reporter")
                         }
-                    )
-                    1 -> ContentManagementSection(
-                        posts = posts,
-                        onApprove = { id ->
-                            FirebaseRepository.approvePost(id)
-                            Toast.makeText(context, "Post Approved for Home Feed!", Toast.LENGTH_SHORT).show()
-                        },
-                        onDelete = { id ->
-                            FirebaseRepository.deletePost(id)
-                            Toast.makeText(context, "Post removed", Toast.LENGTH_SHORT).show()
-                        }
-                    )
-                    2 -> PrivacyPolicySection(
-                        currentPolicy = policy.privacyPolicy,
-                        currentTerms = policy.termsAndConditions,
-                        onSave = { p, t ->
-                            FirebaseRepository.updatePrivacyPolicy(p, t)
-                            Toast.makeText(context, "Privacy Policy & Terms updated in Firebase!", Toast.LENGTH_SHORT).show()
-                        }
-                    )
-                    3 -> PushNotificationSection(
-                        posts = posts,
-                        history = notifications,
-                        onSend = { title, body, postId ->
-                            FirebaseRepository.sendPushNotification(title, body, postId)
-                            Toast.makeText(context, "Broadcast Notification sent to all users!", Toast.LENGTH_SHORT).show()
-                        }
-                    )
+                    }
                 }
             }
         }
     }
 
-    // Dialog: Add / Edit Reporter
+    // Add Reporter Dialog with Bunny.net Profile Photo Upload
     if (showAddReporterDialog) {
-        AddEditReporterDialog(
-            reporterToEdit = editingReporter,
-            onDismiss = { showAddReporterDialog = false },
-            onSave = { name, mobile, address, photo ->
-                showAddReporterDialog = false
-                if (editingReporter != null) {
-                    FirebaseRepository.updateReporter(
-                        editingReporter!!.copy(name = name, mobile = mobile, address = address, photoUrl = photo)
-                    )
-                    Toast.makeText(context, "Reporter updated", Toast.LENGTH_SHORT).show()
-                } else {
-                    // System must auto-generate unique User ID and Password
-                    val created = FirebaseRepository.createReporter(name, mobile, address, photo)
-                    newlyCreatedReporter = created
-                }
-            }
-        )
-    }
+        var name by remember { mutableStateOf("") }
+        var mobile by remember { mutableStateOf("") }
+        var address by remember { mutableStateOf("") }
+        var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Dialog: Display Auto-Generated Credentials to Admin
-    if (newlyCreatedReporter != null) {
+        val photoPicker = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.PickVisualMedia()
+        ) { uri: Uri? ->
+            selectedPhotoUri = uri
+        }
+
         AlertDialog(
-            onDismissRequest = { newlyCreatedReporter = null },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = SuccessGreen,
-                    modifier = Modifier.size(36.dp)
-                )
-            },
+            onDismissRequest = { if (!isSavingReporter) showAddReporterDialog = false },
             title = {
                 Text(
-                    text = "Reporter Credentials Generated",
+                    text = "Add New Ground Reporter",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
                 )
             },
             text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Share these auto-generated login credentials with ${newlyCreatedReporter?.name}:",
-                        color = SlateGray,
-                        fontSize = 13.sp
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Profile Photo Circular Preview
+                    Box(
+                        modifier = Modifier
+                            .size(86.dp)
+                            .clip(CircleShape)
+                            .background(DarkBackground)
+                            .border(2.dp, NewsRed, CircleShape)
+                            .clickable(enabled = !isSavingReporter) {
+                                photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selectedPhotoUri != null) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(selectedPhotoUri)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Selected Photo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = SlateGray,
+                                modifier = Modifier.size(46.dp)
+                            )
+                        }
+
+                        // Camera badge
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(26.dp)
+                                .clip(CircleShape)
+                                .background(NewsRed),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                        enabled = !isSavingReporter,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NewsRed),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, NewsRed),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (selectedPhotoUri != null) "Change Photo" else "Upload to Bunny (profiles/)",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Full Name *") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NewsRed,
+                            unfocusedBorderColor = BorderSlate,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = mobile,
+                        onValueChange = { mobile = it },
+                        label = { Text("Mobile Number *") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NewsRed,
+                            unfocusedBorderColor = BorderSlate,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = { address = it },
+                        label = { Text("Address / Beat *") },
+                        minLines = 2,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NewsRed,
+                            unfocusedBorderColor = BorderSlate,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "System will auto-generate User ID & Password and upload photo to Bunny.net.",
+                        color = Color(0xFFFBBF24),
+                        fontSize = 11.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (name.isNotBlank() && mobile.isNotBlank() && address.isNotBlank()) {
+                            isSavingReporter = true
+                            coroutineScope.launch {
+                                val rep = FirebaseRepository.createReporterWithBunny(
+                                    context = context,
+                                    name = name.trim(),
+                                    mobile = mobile.trim(),
+                                    address = address.trim(),
+                                    photoUri = selectedPhotoUri
+                                )
+                                isSavingReporter = false
+                                showAddReporterDialog = false
+                                newlyCreatedReporter = rep
+                            }
+                        }
+                    },
+                    enabled = !isSavingReporter && name.isNotBlank() && mobile.isNotBlank() && address.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = NewsRed)
+                ) {
+                    Text(if (isSavingReporter) "Uploading to Bunny..." else "Save Reporter", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddReporterDialog = false }, enabled = !isSavingReporter) {
+                    Text("Cancel", color = SlateGray)
+                }
+            },
+            containerColor = DarkSurface,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Credentials Share Dialog
+    if (newlyCreatedReporter != null) {
+        val rep = newlyCreatedReporter!!
+        AlertDialog(
+            onDismissRequest = { newlyCreatedReporter = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SuccessGreen)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Reporter Created!", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column {
+                    Text("Share these login credentials with ${rep.name}:", color = SlateGray, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(14.dp))
                     Card(
                         colors = CardDefaults.cardColors(containerColor = DarkBackground),
@@ -336,32 +539,12 @@ fun AdminPanelScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("User ID:", color = SlateGray, fontSize = 12.sp)
-                                Text(
-                                    text = newlyCreatedReporter?.id ?: "",
-                                    color = NewsRed,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Password:", color = SlateGray, fontSize = 12.sp)
-                                Text(
-                                    text = newlyCreatedReporter?.password ?: "",
-                                    color = Color.White,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            Text("User ID: ${rep.id}", color = NewsRed, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("Password: ${rep.password}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            if (rep.photoUrl.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text("Bunny CDN Avatar: ${rep.photoUrl}", color = SlateGray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
                             }
                         }
                     }
@@ -371,19 +554,23 @@ fun AdminPanelScreen(
                 Button(
                     onClick = {
                         val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val data = ClipData.newPlainText(
-                            "Reporter Credentials",
-                            "Drikq News Reporter Login\nUser ID: ${newlyCreatedReporter?.id}\nPassword: ${newlyCreatedReporter?.password}"
+                        clip.setPrimaryClip(
+                            ClipData.newPlainText(
+                                "Drikq Reporter Credentials",
+                                "Drikq News Reporter Portal\nUser ID: ${rep.id}\nPassword: ${rep.password}"
+                            )
                         )
-                        clip.setPrimaryClip(data)
                         Toast.makeText(context, "Credentials copied to clipboard!", Toast.LENGTH_SHORT).show()
                         newlyCreatedReporter = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = NewsRed)
                 ) {
-                    Icon(imageVector = Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Copy & Done", color = Color.White)
+                    Text("Copy Credentials", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { newlyCreatedReporter = null }) {
+                    Text("Close", color = SlateGray)
                 }
             },
             containerColor = DarkSurface,
@@ -392,205 +579,74 @@ fun AdminPanelScreen(
     }
 }
 
-// ----------------------------------------------------
-// Section A: Reporter Management
-// ----------------------------------------------------
 @Composable
-fun ReporterManagementSection(
+fun AdminReportersTab(
     reporters: List<Reporter>,
-    onAddNewClick: () -> Unit,
-    onEditClick: (Reporter) -> Unit,
-    onDeleteClick: (String) -> Unit
+    onDeleteReporter: (String) -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .padding(bottom = 72.dp)
-        ) {
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Authorized Ground Reporters (${reporters.size})",
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
+    if (reporters.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No ground reporters added yet. Tap '+' to create.", color = SlateGray)
+        }
+    } else {
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             items(reporters, key = { it.id }) { reporter ->
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                     colors = CardDefaults.cardColors(containerColor = DarkSurface),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(reporter.photoUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = reporter.name,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .clip(CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = reporter.name,
-                                    color = Color.White,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "ID: ${reporter.id} • Tel: ${reporter.mobile}",
-                                    color = SlateGray,
-                                    fontSize = 12.sp
-                                )
-                                Text(
-                                    text = reporter.address,
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    fontSize = 11.sp
-                                )
-                            }
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(reporter.photoUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = reporter.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(50.dp).clip(CircleShape).background(DarkBackground)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(reporter.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("ID: ${reporter.id} • ${reporter.mobile}", color = SlateGray, fontSize = 12.sp)
+                            Text(reporter.address, color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
+                            Text("Password: ${reporter.password}", color = Color(0xFFFBBF24), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Divider(color = BorderSlate)
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Pass: ${reporter.password}",
-                                color = Color(0xFFFBBF24),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-
-                            Row {
-                                IconButton(
-                                    onClick = { onEditClick(reporter) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Edit Reporter",
-                                        tint = Color(0xFF60A5FA),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                IconButton(
-                                    onClick = { onDeleteClick(reporter.id) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete Reporter",
-                                        tint = NewsRed,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
+                        IconButton(onClick = { onDeleteReporter(reporter.id) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = NewsRed)
                         }
                     }
                 }
             }
         }
-
-        // Floating Action Button: Add New Reporter
-        FloatingActionButton(
-            onClick = onAddNewClick,
-            containerColor = NewsRed,
-            contentColor = Color.White,
-            shape = CircleShape,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(20.dp)
-                .testTag("admin_add_reporter_fab")
-        ) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = "Add Reporter")
-        }
     }
 }
 
-// ----------------------------------------------------
-// Section B: Content Management
-// ----------------------------------------------------
 @Composable
-fun ContentManagementSection(
+fun AdminContentTab(
     posts: List<Post>,
     onApprove: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    var statusFilter by remember { mutableStateOf("ALL") }
-
-    val filtered = when (statusFilter) {
-        "PENDING" -> posts.filter { it.status == PostStatus.PENDING }
-        "APPROVED" -> posts.filter { it.status == PostStatus.APPROVED }
-        else -> posts
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        // Filter Chips
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf("ALL" to "All (${posts.size})", "PENDING" to "Pending (${posts.count { it.status == PostStatus.PENDING }})", "APPROVED" to "Approved (${posts.count { it.status == PostStatus.APPROVED }})").forEach { (filterKey, label) ->
-                val selected = statusFilter == filterKey
-                Surface(
-                    color = if (selected) NewsRed else DarkSurface,
-                    shape = RoundedCornerShape(20.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, if (selected) NewsRed else BorderSlate),
-                    modifier = Modifier.clickable { statusFilter = filterKey }
-                ) {
-                    Text(
-                        text = label,
-                        color = if (selected) Color.White else SlateGray,
-                        fontSize = 12.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
+    if (posts.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No posts uploaded from reporters yet.", color = SlateGray)
         }
-
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(filtered, key = { it.id }) { post ->
+    } else {
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            items(posts, key = { it.id }) { post ->
+                val isApproved = post.status == PostStatus.APPROVED
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     colors = CardDefaults.cardColors(containerColor = DarkSurface),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            // Thumbnail
                             AsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
                                     .data(post.thumbnailUrl)
@@ -598,73 +654,37 @@ fun ContentManagementSection(
                                     .build(),
                                 contentDescription = post.title,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(90.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                modifier = Modifier.size(90.dp).clip(RoundedCornerShape(8.dp)).background(DarkBackground)
                             )
-
                             Spacer(modifier = Modifier.width(12.dp))
-
-                            // Details
                             Column(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                Surface(
+                                    color = if (isApproved) SuccessGreen else Color(0xFFF59E0B),
+                                    shape = RoundedCornerShape(4.dp)
                                 ) {
-                                    Surface(
-                                        color = if (post.status == PostStatus.APPROVED) SuccessGreen else Color(0xFFF59E0B),
-                                        shape = RoundedCornerShape(4.dp)
-                                    ) {
-                                        Text(
-                                            text = post.status.name,
-                                            color = Color.White,
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-
                                     Text(
-                                        text = post.mediaType.name,
-                                        color = SlateGray,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                        text = post.status.name,
+                                        color = Color.White,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
-
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = post.title,
-                                    color = Color.White,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 2
-                                )
+                                Text(post.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                                 Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "${post.place} • Reporter: ${post.reporterName}",
-                                    color = SlateGray,
-                                    fontSize = 11.sp
-                                )
+                                Text("${post.place} • Reporter: ${post.reporterName}", color = SlateGray, fontSize = 11.sp)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("Bunny URL: ${post.mediaUrl}", color = Color(0xFF60A5FA), fontSize = 9.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
                             }
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = post.description,
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontSize = 12.sp,
-                            maxLines = 3
-                        )
-
+                        Text(post.description, color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp, maxLines = 2)
                         Spacer(modifier = Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (post.status == PostStatus.PENDING) {
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            if (!isApproved) {
                                 Button(
                                     onClick = { onApprove(post.id) },
                                     colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
@@ -673,11 +693,10 @@ fun ContentManagementSection(
                                 ) {
                                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Approve", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text("Approve to Feed", fontSize = 12.sp)
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
-
                             OutlinedButton(
                                 onClick = { onDelete(post.id) },
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = NewsRed),
@@ -687,7 +706,7 @@ fun ContentManagementSection(
                             ) {
                                 Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Delete", fontSize = 12.sp)
+                                Text("Delete from Bunny & RTDB", fontSize = 12.sp)
                             }
                         }
                     }
@@ -697,105 +716,64 @@ fun ContentManagementSection(
     }
 }
 
-// ----------------------------------------------------
-// Section C: Privacy Policy
-// ----------------------------------------------------
 @Composable
-fun PrivacyPolicySection(
-    currentPolicy: String,
-    currentTerms: String,
+fun AdminPolicyTab(
+    currentPolicy: com.example.data.model.AppPolicy,
     onSave: (String, String) -> Unit
 ) {
-    var policyText by remember(currentPolicy) { mutableStateOf(currentPolicy) }
-    var termsText by remember(currentTerms) { mutableStateOf(currentTerms) }
+    var policyText by remember(currentPolicy) { mutableStateOf(currentPolicy.privacyPolicy) }
+    var termsText by remember(currentPolicy) { mutableStateOf(currentPolicy.termsAndConditions) }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
     ) {
-        Text(
-            text = "Editorial Privacy Policy",
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "This legal notice is synchronized to Firebase and shown on the user Profile screen.",
-            color = SlateGray,
-            fontSize = 12.sp
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
+        Text("Privacy Policy Text", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = policyText,
             onValueChange = { policyText = it },
-            label = { Text("Privacy Policy Content") },
-            minLines = 6,
-            maxLines = 10,
+            minLines = 4,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = NewsRed,
                 unfocusedBorderColor = BorderSlate,
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White
             ),
-            shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        Text(
-            text = "Terms & Conditions",
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-
+        Text("Terms & Conditions Text", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
-
         OutlinedTextField(
             value = termsText,
             onValueChange = { termsText = it },
-            label = { Text("Terms & Conditions Content") },
-            minLines = 6,
-            maxLines = 10,
+            minLines = 4,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = NewsRed,
                 unfocusedBorderColor = BorderSlate,
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White
             ),
-            shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(24.dp))
-
         Button(
-            onClick = { onSave(policyText, termsText) },
+            onClick = { onSave(policyText.trim(), termsText.trim()) },
             colors = ButtonDefaults.buttonColors(containerColor = NewsRed),
             shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
+            modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
-            Icon(Icons.Default.Policy, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Update Policy in Firebase", fontWeight = FontWeight.Bold)
+            Text("Save & Sync with App", fontWeight = FontWeight.Bold)
         }
     }
 }
 
-// ----------------------------------------------------
-// Section D: Push Notification
-// ----------------------------------------------------
 @Composable
-fun PushNotificationSection(
+fun AdminNotificationsTab(
     posts: List<Post>,
-    history: List<com.example.data.model.PushNotificationItem>,
+    history: List<PushNotificationItem>,
     onSend: (String, String, String?) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
@@ -803,25 +781,12 @@ fun PushNotificationSection(
     var selectedPostId by remember { mutableStateOf<String?>(null) }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
     ) {
-        Text(
-            text = "Broadcast Push Notification",
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "Send an urgent news notification to all subscribers via Firebase Cloud Messaging",
-            color = SlateGray,
-            fontSize = 12.sp
-        )
+        Text("Broadcast Push Notification", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text("Send breaking news alerts to all subscribers", color = SlateGray, fontSize = 12.sp)
 
         Spacer(modifier = Modifier.height(16.dp))
-
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },
@@ -833,71 +798,25 @@ fun PushNotificationSection(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White
             ),
-            shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(12.dp))
-
         OutlinedTextField(
             value = body,
             onValueChange = { body = it },
             label = { Text("Message Body") },
             minLines = 3,
-            maxLines = 5,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = NewsRed,
                 unfocusedBorderColor = BorderSlate,
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White
             ),
-            shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Text(
-            text = "Link to Video/Content (Optional):",
-            color = SlateGray,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-
-        posts.take(3).forEach { post ->
-            val isSelected = selectedPostId == post.id
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (isSelected) NewsRed.copy(alpha = 0.2f) else DarkSurface)
-                    .border(1.dp, if (isSelected) NewsRed else BorderSlate, RoundedCornerShape(8.dp))
-                    .clickable { selectedPostId = if (isSelected) null else post.id }
-                    .padding(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = post.title,
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f)
-                )
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Selected",
-                        tint = NewsRed,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(20.dp))
-
         Button(
             onClick = {
                 if (title.isNotBlank() && body.isNotBlank()) {
@@ -910,362 +829,11 @@ fun PushNotificationSection(
             enabled = title.isNotBlank() && body.isNotBlank(),
             colors = ButtonDefaults.buttonColors(containerColor = NewsRed),
             shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
+            modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
             Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Send Push Broadcast", fontWeight = FontWeight.Bold)
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            text = "Recent Notifications Broadcasts (${history.size})",
-            color = Color.White,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        history.forEach { item ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(item.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text("Broadcast", color = SuccessGreen, fontSize = 10.sp)
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(item.body, color = SlateGray, fontSize = 11.sp)
-                }
-            }
-        }
-    }
-}
-
-// ----------------------------------------------------
-// Dialog: Add / Edit Reporter
-// ----------------------------------------------------
-@Composable
-fun AddEditReporterDialog(
-    reporterToEdit: Reporter?,
-    onDismiss: () -> Unit,
-    onSave: (String, String, String, String) -> Unit
-) {
-    var name by remember { mutableStateOf(reporterToEdit?.name ?: "") }
-    var mobile by remember { mutableStateOf(reporterToEdit?.mobile ?: "") }
-    var address by remember { mutableStateOf(reporterToEdit?.address ?: "") }
-    var photoUri by remember { mutableStateOf<Uri?>(null) }
-    var photoUrl by remember { mutableStateOf(reporterToEdit?.photoUrl ?: "") }
-
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            photoUri = uri
-            photoUrl = uri.toString()
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = if (reporterToEdit != null) "Edit Reporter" else "Add New Ground Reporter",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Circular profile photo placeholder / preview
-                Box(
-                    modifier = Modifier
-                        .size(86.dp)
-                        .clip(CircleShape)
-                        .background(DarkBackground)
-                        .border(2.dp, NewsRed, CircleShape)
-                        .clickable {
-                            photoPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (photoUri != null) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(photoUri)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Selected profile photo",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else if (photoUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(photoUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Reporter photo",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Default avatar",
-                            tint = SlateGray,
-                            modifier = Modifier.size(46.dp)
-                        )
-                    }
-
-                    // Camera badge
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(26.dp)
-                            .clip(CircleShape)
-                            .background(NewsRed),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CameraAlt,
-                            contentDescription = "Upload Photo",
-                            tint = Color.White,
-                            modifier = Modifier.size(15.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedButton(
-                    onClick = {
-                        photoPickerLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    },
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = NewsRed),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, NewsRed),
-                    modifier = Modifier.height(34.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (photoUri != null || photoUrl.isNotBlank()) "Change Profile Photo" else "Upload Profile Photo",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Full Name
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Full Name *") },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NewsRed,
-                        unfocusedBorderColor = BorderSlate,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Mobile Number
-                OutlinedTextField(
-                    value = mobile,
-                    onValueChange = { mobile = it },
-                    label = { Text("Mobile Number *") },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NewsRed,
-                        unfocusedBorderColor = BorderSlate,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Address
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    label = { Text("Address / District Beat *") },
-                    minLines = 2,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NewsRed,
-                        unfocusedBorderColor = BorderSlate,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                if (reporterToEdit == null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Note: System will auto-generate unique User ID and Password upon save.",
-                        color = Color(0xFFFBBF24),
-                        fontSize = 11.sp
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (name.isNotBlank() && mobile.isNotBlank() && address.isNotBlank()) {
-                        val finalPhoto = if (photoUrl.isNotBlank()) photoUrl else "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
-                        onSave(name.trim(), mobile.trim(), address.trim(), finalPhoto)
-                    }
-                },
-                enabled = name.isNotBlank() && mobile.isNotBlank() && address.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = NewsRed)
-            ) {
-                Text(if (reporterToEdit != null) "Update" else "Create Reporter", color = Color.White)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = SlateGray)
-            }
-        },
-        containerColor = DarkSurface,
-        shape = RoundedCornerShape(16.dp)
-    )
-}
-
-// ----------------------------------------------------
-// Admin Login Gate Screen
-// ----------------------------------------------------
-@Composable
-fun AdminLoginGate(
-    passInput: String,
-    onPassChange: (String) -> Unit,
-    errorMessage: String?,
-    onSubmit: () -> Unit,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(DarkBackground)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Surface(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape),
-                color = Color(0xFF1E3A8A)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = "Admin Shield",
-                        tint = Color(0xFF93C5FD),
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = "Bureau Admin Access",
-                color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "Manage reporters, editorial approvals, policy & push alerts",
-                color = SlateGray,
-                fontSize = 13.sp
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            OutlinedTextField(
-                value = passInput,
-                onValueChange = onPassChange,
-                label = { Text("Admin Passcode / Password") },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = Color(0xFF60A5FA))
-                },
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF60A5FA),
-                    unfocusedBorderColor = BorderSlate,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            if (errorMessage != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = errorMessage, color = NewsRed, fontSize = 12.sp)
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Button(
-                onClick = onSubmit,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-            ) {
-                Text("Enter Admin Dashboard", color = Color.White, fontWeight = FontWeight.Bold)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(onClick = onBack) {
-                Text("Cancel & Return to Login", color = SlateGray)
-            }
+            Text("Broadcast Alert", fontWeight = FontWeight.Bold)
         }
     }
 }
