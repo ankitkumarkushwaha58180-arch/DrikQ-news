@@ -38,6 +38,8 @@ sealed interface Screen {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Initialize user session and persistent storage across app kills
+        FirebaseRepository.initPersistence(applicationContext)
         enableEdgeToEdge()
         setContent {
             DrikqNewsTheme {
@@ -55,7 +57,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DrikqNewsAppNavigation() {
     val currentUser by FirebaseRepository.currentUser.collectAsState()
-    var currentScreen by remember(currentUser) {
+
+    // Persistent login state: if currentUser is already logged in -> go directly to Home Feed
+    var currentScreen by remember(currentUser != null) {
         mutableStateOf<Screen>(if (currentUser != null) Screen.Home else Screen.Login)
     }
 

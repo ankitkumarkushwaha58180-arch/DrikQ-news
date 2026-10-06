@@ -28,7 +28,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +60,8 @@ fun MediaContentView(
     mediaUrl: String,
     mediaType: MediaType,
     modifier: Modifier = Modifier,
-    onContentClick: () -> Unit = {}
+    onContentClick: () -> Unit = {},
+    onPlayStarted: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -72,7 +72,10 @@ fun MediaContentView(
         Box(
             modifier = modifier
                 .background(Color.Black)
-                .clickable { onContentClick() }
+                .clickable {
+                    onPlayStarted()
+                    onContentClick()
+                }
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
@@ -80,7 +83,10 @@ fun MediaContentView(
                     .crossfade(true)
                     .listener(
                         onError = { _, _ -> hasError = true },
-                        onSuccess = { _, _ -> hasError = false }
+                        onSuccess = { _, _ ->
+                            hasError = false
+                            onPlayStarted()
+                        }
                     )
                     .build(),
                 contentDescription = "News photo",
@@ -131,7 +137,7 @@ fun MediaContentView(
         val exoPlayer = remember(mediaUrl) {
             ExoPlayer.Builder(context).build().apply {
                 repeatMode = Player.REPEAT_MODE_ONE
-                playWhenReady = false // User can tap to play
+                playWhenReady = false
                 if (mediaUrl.isNotBlank()) {
                     try {
                         val item = MediaItem.fromUri(Uri.parse(mediaUrl))
@@ -150,6 +156,9 @@ fun MediaContentView(
             val listener = object : Player.Listener {
                 override fun onIsPlayingChanged(playing: Boolean) {
                     isPlaying = playing
+                    if (playing) {
+                        onPlayStarted()
+                    }
                 }
 
                 override fun onPlaybackStateChanged(state: Int) {
@@ -177,7 +186,10 @@ fun MediaContentView(
                             exoPlayer.pause()
                         } else {
                             exoPlayer.play()
+                            onPlayStarted()
                         }
+                    } else {
+                        onContentClick()
                     }
                 }
         ) {

@@ -457,7 +457,7 @@ fun ReporterUploadScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Description (required)
+            // Description (required - unlimited length)
             OutlinedTextField(
                 value = description,
                 onValueChange = {
@@ -465,9 +465,8 @@ fun ReporterUploadScreen(
                     validationError = null
                 },
                 label = { Text("Full News Description *") },
-                placeholder = { Text("Provide complete eyewitness details, verified facts, and ground impact...") },
-                minLines = 4,
-                maxLines = 8,
+                placeholder = { Text("Provide complete eyewitness details, verified facts, and ground impact (no length limit)...") },
+                minLines = 5,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = NewsRed,
                     unfocusedBorderColor = BorderSlate,

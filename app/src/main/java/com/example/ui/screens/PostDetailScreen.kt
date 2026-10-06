@@ -109,7 +109,10 @@ fun PostDetailScreen(
                 mediaType = post.mediaType,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp)
+                    .height(320.dp),
+                onPlayStarted = {
+                    FirebaseRepository.recordView(post.id)
+                }
             )
 
             Column(modifier = Modifier.padding(18.dp)) {
@@ -131,9 +134,9 @@ fun PostDetailScreen(
                 Text(
                     text = post.title,
                     color = Color.White,
-                    fontSize = 20.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    lineHeight = 26.sp
+                    lineHeight = 28.sp
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -158,7 +161,11 @@ fun PostDetailScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Reporter Header
+                // Reporter Header with Follow button
+                val reporters by FirebaseRepository.reporters.collectAsState()
+                val reporter = reporters.find { it.id == post.reporterId }
+                val isFollowed = reporter?.followedByUsers?.contains(currentUserId) == true
+
                 Surface(
                     color = DarkSurface,
                     shape = RoundedCornerShape(12.dp),
@@ -177,9 +184,21 @@ fun PostDetailScreen(
                             modifier = Modifier.size(44.dp).clip(CircleShape).background(DarkBackground)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("Filed by ${post.reporterName}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Text("Reporter ID: ${post.reporterId}", color = SlateGray, fontSize = 11.sp)
+                        }
+
+                        androidx.compose.material3.Button(
+                            onClick = { FirebaseRepository.toggleFollowReporter(post.reporterId, currentUserId) },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = if (isFollowed) BorderSlate else NewsRed
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text(if (isFollowed) "Following" else "Follow", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

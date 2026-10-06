@@ -84,6 +84,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -115,7 +118,7 @@ fun AdminPanelScreen(
     val policy by FirebaseRepository.policy.collectAsState()
     val notifications by FirebaseRepository.notifications.collectAsState()
 
-    var adminPasscode by remember { mutableStateOf("admin") }
+    var adminPasscode by remember { mutableStateOf("") }
     var loginError by remember { mutableStateOf<String?>(null) }
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
@@ -195,7 +198,10 @@ fun AdminPanelScreen(
                         adminPasscode = it
                         loginError = null
                     },
-                    label = { Text("Admin Passcode (default: admin)") },
+                    label = { Text("Admin Passcode") },
+                    placeholder = { Text("Enter Passcode") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     leadingIcon = {
                         Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF60A5FA))
                     },
@@ -221,7 +227,7 @@ fun AdminPanelScreen(
                     onClick = {
                         val ok = FirebaseRepository.loginAdmin(adminPasscode)
                         if (!ok) {
-                            loginError = "Invalid passcode. Use 'admin' or 'admin123'"
+                            loginError = "Incorrect password"
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),

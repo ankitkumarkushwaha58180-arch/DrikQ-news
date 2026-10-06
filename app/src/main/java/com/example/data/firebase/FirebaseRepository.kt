@@ -1,6 +1,7 @@
 package com.example.data.firebase
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.net.Uri
 import android.util.Log
 import com.example.data.bunny.BunnyStorageHelper
@@ -11,6 +12,7 @@ import com.example.data.model.PostStatus
 import com.example.data.model.PushNotificationItem
 import com.example.data.model.Reporter
 import com.example.data.model.UserProfile
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,9 +29,11 @@ import java.util.UUID
 object FirebaseRepository {
     private const val TAG = "FirebaseRepository"
     const val RTDB_BASE_URL = "https://drikq-f9a39-default-rtdb.asia-southeast1.firebasedatabase.app"
+    private const val PREFS_NAME = "drikq_prefs"
 
     private val httpClient = OkHttpClient()
     private val scope = CoroutineScope(Dispatchers.IO)
+    private var sharedPrefs: SharedPreferences? = null
 
     private val _currentUser = MutableStateFlow<UserProfile?>(null)
     val currentUser: StateFlow<UserProfile?> = _currentUser.asStateFlow()
@@ -57,13 +61,60 @@ object FirebaseRepository {
     private val _notifications = MutableStateFlow<List<PushNotificationItem>>(emptyList())
     val notifications: StateFlow<List<PushNotificationItem>> = _notifications.asStateFlow()
 
-    init {
+    private val viewedPostIds = mutableSetOf<String>()
+
+    /**
+     * Initializes persistence with Android SharedPreferences and checks FirebaseAuth currentUser.
+     */
+    fun initPersistence(context: Context) {
+        if (sharedPrefs != null) return
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        sharedPrefs = prefs
+
+        // 1. Check FirebaseAuth first
+        val fbUser = try {
+            FirebaseAuth.getInstance().currentUser
+        } catch (_: Exception) {
+            null
+        }
+
+        val savedUid = prefs.getString("user_uid", null)
+        val savedEmail = prefs.getString("user_email", null)
+        val savedName = prefs.getString("user_name", null)
+        val savedPhoto = prefs.getString("user_photo", "") ?: ""
+
+        if (fbUser != null && !fbUser.email.isNullOrBlank()) {
+            val user = UserProfile(
+                uid = fbUser.uid,
+                name = fbUser.displayName ?: fbUser.email!!.substringBefore("@"),
+                email = fbUser.email!!,
+                photoUrl = fbUser.photoUrl?.toString() ?: savedPhoto
+            )
+            _currentUser.value = user
+        } else if (!savedUid.isNullOrBlank() && !savedEmail.isNullOrBlank()) {
+            val user = UserProfile(
+                uid = savedUid,
+                name = savedName ?: savedEmail.substringBefore("@"),
+                email = savedEmail,
+                photoUrl = savedPhoto
+            )
+            _currentUser.value = user
+        }
+
         fetchFromRemoteRtdb()
     }
 
-    private fun fetchFromRemoteRtdb() {
+    private fun getUserId(): String {
+        return _currentUser.value?.uid ?: sharedPrefs?.getString("user_uid", null) ?: "guest"
+    }
+
+    fun fetchFromRemoteRtdb() {
         scope.launch {
             try {
+                val currentUid = getUserId()
+                val locallyLiked = sharedPrefs?.getStringSet("liked_posts_$currentUid", emptySet()) ?: emptySet()
+                val locallyFollowed = sharedPrefs?.getStringSet("followed_reps_$currentUid", emptySet()) ?: emptySet()
+
                 // Fetch policy
                 val request = Request.Builder()
                     .url("$RTDB_BASE_URL/settings/policy.json")
@@ -82,6 +133,34 @@ object FirebaseRepository {
                     }
                 }
 
+                // Fetch user follows
+                val followsFromRtdb = mutableSetOf<String>()
+                if (currentUid != "guest") {
+                    try {
+                        val fReq = Request.Builder()
+                            .url("$RTDB_BASE_URL/follows/$currentUid.json")
+                            .get()
+                            .build()
+                        httpClient.newCall(fReq).execute().use { fRes ->
+                            if (fRes.isSuccessful) {
+                                val fBody = fRes.body?.string()
+                                if (!fBody.isNullOrBlank() && fBody != "null") {
+                                    val fJson = JSONObject(fBody)
+                                    val keys = fJson.keys()
+                                    while (keys.hasNext()) {
+                                        val k = keys.next()
+                                        if (fJson.optBoolean(k, false) || fJson.optString(k) == "true") {
+                                            followsFromRtdb.add(k)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+
+                val allFollowedReporters = followsFromRtdb + locallyFollowed
+
                 // Fetch real reporters from RTDB
                 val repReq = Request.Builder()
                     .url("$RTDB_BASE_URL/reporters.json")
@@ -98,16 +177,20 @@ object FirebaseRepository {
                                 val key = keys.next()
                                 val obj = json.optJSONObject(key)
                                 if (obj != null) {
+                                    val repId = obj.optString("id", key)
+                                    val isFollowed = allFollowedReporters.contains(repId)
+                                    val followedList = if (isFollowed) mutableListOf(currentUid) else mutableListOf()
                                     list.add(
                                         Reporter(
-                                            id = obj.optString("id", key),
+                                            id = repId,
                                             name = obj.optString("name"),
                                             mobile = obj.optString("mobile"),
                                             address = obj.optString("address"),
                                             photoUrl = obj.optString("photoUrl"),
                                             password = obj.optString("password"),
                                             followersCount = obj.optInt("followersCount", 0),
-                                            followingCount = obj.optInt("followingCount", 0)
+                                            followingCount = obj.optInt("followingCount", 0),
+                                            followedByUsers = followedList
                                         )
                                     )
                                 }
@@ -133,11 +216,29 @@ object FirebaseRepository {
                                 val key = keys.next()
                                 val obj = json.optJSONObject(key)
                                 if (obj != null) {
+                                    val postId = obj.optString("id", key)
                                     val statusStr = obj.optString("status", "PENDING").uppercase()
                                     val mediaTypeStr = obj.optString("mediaType", "VIDEO").uppercase()
+
+                                    // Likes persistence parser
+                                    val likedUsersList = mutableListOf<String>()
+                                    val likesObj = obj.optJSONObject("likes")
+                                    if (likesObj != null) {
+                                        val lKeys = likesObj.keys()
+                                        while (lKeys.hasNext()) {
+                                            val uKey = lKeys.next()
+                                            if (likesObj.optBoolean(uKey, false) || likesObj.optString(uKey) == "true") {
+                                                likedUsersList.add(uKey)
+                                            }
+                                        }
+                                    }
+                                    if (locallyLiked.contains(postId) && !likedUsersList.contains(currentUid)) {
+                                        likedUsersList.add(currentUid)
+                                    }
+
                                     list.add(
                                         Post(
-                                            id = obj.optString("id", key),
+                                            id = postId,
                                             title = obj.optString("title"),
                                             description = obj.optString("description"),
                                             place = obj.optString("place"),
@@ -148,9 +249,10 @@ object FirebaseRepository {
                                             reporterName = obj.optString("reporterName"),
                                             reporterPhotoUrl = obj.optString("reporterPhotoUrl"),
                                             status = if (statusStr == "APPROVED") PostStatus.APPROVED else PostStatus.PENDING,
-                                            likesCount = obj.optInt("likesCount", 0),
+                                            likesCount = obj.optInt("likesCount", likedUsersList.size),
                                             viewsCount = obj.optInt("viewsCount", 0),
-                                            timestamp = obj.optLong("timestamp", System.currentTimeMillis())
+                                            timestamp = obj.optLong("timestamp", System.currentTimeMillis()),
+                                            likedByUsers = likedUsersList
                                         )
                                     )
                                 }
@@ -166,17 +268,39 @@ object FirebaseRepository {
     }
 
     fun loginWithGoogle(email: String, displayName: String, photoUrl: String) {
+        val uid = "usr_" + UUID.randomUUID().toString().take(8)
         val user = UserProfile(
-            uid = "usr_" + UUID.randomUUID().toString().take(8),
+            uid = uid,
             name = displayName,
             email = email,
             photoUrl = photoUrl
         )
         _currentUser.value = user
+
+        // Persist session in SharedPreferences
+        sharedPrefs?.edit()?.apply {
+            putString("user_uid", user.uid)
+            putString("user_email", user.email)
+            putString("user_name", user.name)
+            putString("user_photo", user.photoUrl)
+            apply()
+        }
+
+        fetchFromRemoteRtdb()
     }
 
     fun logoutUser() {
         _currentUser.value = null
+        sharedPrefs?.edit()?.apply {
+            remove("user_uid")
+            remove("user_email")
+            remove("user_name")
+            remove("user_photo")
+            apply()
+        }
+        try {
+            FirebaseAuth.getInstance().signOut()
+        } catch (_: Exception) {}
     }
 
     fun authenticateReporter(userIdInput: String, passwordInput: String): Reporter? {
@@ -195,8 +319,11 @@ object FirebaseRepository {
         _currentReporter.value = null
     }
 
+    /**
+     * Exact required code: 274813
+     */
     fun loginAdmin(passcode: String): Boolean {
-        return if (passcode.trim() == "admin" || passcode.trim() == "admin123") {
+        return if (passcode.trim() == "274813") {
             _isAdminLoggedIn.value = true
             true
         } else {
@@ -208,9 +335,6 @@ object FirebaseRepository {
         _isAdminLoggedIn.value = false
     }
 
-    /**
-     * Uploads media to Bunny.net Edge Storage and saves post metadata to Firebase RTDB.
-     */
     suspend fun uploadPostWithBunny(
         context: Context,
         fileUri: Uri,
@@ -225,7 +349,6 @@ object FirebaseRepository {
         val mimeType = if (mediaType == MediaType.VIDEO) "video/mp4" else "image/jpeg"
         val uniqueFileName = "${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}.$ext"
 
-        // 1. Upload to Bunny.net
         val bunnyResult = BunnyStorageHelper.uploadFile(
             context = context,
             fileUri = fileUri,
@@ -257,7 +380,6 @@ object FirebaseRepository {
             timestamp = System.currentTimeMillis()
         )
 
-        // 2. Save metadata into local state and Firebase RTDB
         _posts.value = listOf(post) + _posts.value
 
         scope.launch {
@@ -293,9 +415,6 @@ object FirebaseRepository {
         return Result.success(post)
     }
 
-    /**
-     * Creates new reporter, uploading profile photo to Bunny.net if a Uri is supplied.
-     */
     suspend fun createReporterWithBunny(
         context: Context,
         name: String,
@@ -385,23 +504,18 @@ object FirebaseRepository {
         }
     }
 
-    /**
-     * Deletes post from local state, RTDB, AND deletes the file from Bunny Storage!
-     */
     fun deletePost(postId: String) {
         val postToDelete = _posts.value.find { it.id == postId }
         _posts.value = _posts.value.filter { it.id != postId }
 
         scope.launch {
             try {
-                // Delete from Firebase RTDB
                 val request = Request.Builder()
                     .url("$RTDB_BASE_URL/posts/$postId.json")
                     .delete()
                     .build()
                 httpClient.newCall(request).execute().close()
 
-                // Delete from Bunny Edge Storage
                 if (postToDelete != null && postToDelete.mediaUrl.isNotBlank()) {
                     BunnyStorageHelper.deleteFile(postToDelete.mediaUrl)
                 }
@@ -423,7 +537,6 @@ object FirebaseRepository {
                     .build()
                 httpClient.newCall(request).execute().close()
 
-                // Also delete avatar if stored on Bunny
                 if (rep != null && rep.photoUrl.isNotBlank() && rep.photoUrl.contains(BunnyStorageHelper.PUBLIC_CDN_BASE_URL)) {
                     BunnyStorageHelper.deleteFile(rep.photoUrl)
                 }
@@ -433,6 +546,12 @@ object FirebaseRepository {
         }
     }
 
+    /**
+     * Requirement 2: Likes persistence:
+     * - Save like in Firebase: posts/{postId}/likes/{userId} = true (or DELETE)
+     * - Update posts/{postId}/likesCount
+     * - After app restart, liked posts still show filled heart
+     */
     fun toggleLike(postId: String, userId: String) {
         val list = _posts.value.toMutableList()
         val index = list.indexOfFirst { it.id == postId }
@@ -449,14 +568,40 @@ object FirebaseRepository {
             list[index] = post.copy(likesCount = updatedLikes)
             _posts.value = list
 
+            // Update SharedPreferences
+            sharedPrefs?.let { prefs ->
+                val key = "liked_posts_$userId"
+                val set = prefs.getStringSet(key, emptySet())?.toMutableSet() ?: mutableSetOf()
+                if (liked) set.remove(postId) else set.add(postId)
+                prefs.edit().putStringSet(key, set).apply()
+            }
+
+            // Sync with Firebase RTDB
             scope.launch {
                 try {
-                    val body = "$updatedLikes".toRequestBody("application/json".toMediaTypeOrNull())
-                    val request = Request.Builder()
+                    // Update posts/{postId}/likes/{userId} = true or delete
+                    if (!liked) {
+                        val body = "true".toRequestBody("application/json".toMediaTypeOrNull())
+                        val req = Request.Builder()
+                            .url("$RTDB_BASE_URL/posts/$postId/likes/$userId.json")
+                            .put(body)
+                            .build()
+                        httpClient.newCall(req).execute().close()
+                    } else {
+                        val req = Request.Builder()
+                            .url("$RTDB_BASE_URL/posts/$postId/likes/$userId.json")
+                            .delete()
+                            .build()
+                        httpClient.newCall(req).execute().close()
+                    }
+
+                    // Update posts/{postId}/likesCount
+                    val countBody = "$updatedLikes".toRequestBody("application/json".toMediaTypeOrNull())
+                    val countReq = Request.Builder()
                         .url("$RTDB_BASE_URL/posts/$postId/likesCount.json")
-                        .put(body)
+                        .put(countBody)
                         .build()
-                    httpClient.newCall(request).execute().close()
+                    httpClient.newCall(countReq).execute().close()
                 } catch (e: Exception) {
                     Log.e(TAG, "Error updating likes in RTDB: ${e.message}")
                 }
@@ -464,7 +609,76 @@ object FirebaseRepository {
         }
     }
 
+    /**
+     * Requirement 3: Follow persistence:
+     * - Save follow in Firebase: follows/{userId}/{reporterId} = true (or DELETE)
+     * - Update reporters/{reporterId}/followersCount
+     * - After app restart, show "Following" if already followed
+     */
+    fun toggleFollowReporter(reporterId: String, userId: String) {
+        val list = _reporters.value.toMutableList()
+        val index = list.indexOfFirst { it.id == reporterId }
+        if (index != -1) {
+            val rep = list[index]
+            val following = rep.followedByUsers.contains(userId)
+            val updatedFollowers = if (following) {
+                rep.followedByUsers.remove(userId)
+                (rep.followersCount - 1).coerceAtLeast(0)
+            } else {
+                rep.followedByUsers.add(userId)
+                rep.followersCount + 1
+            }
+            list[index] = rep.copy(followersCount = updatedFollowers)
+            _reporters.value = list
+
+            // Update SharedPreferences
+            sharedPrefs?.let { prefs ->
+                val key = "followed_reps_$userId"
+                val set = prefs.getStringSet(key, emptySet())?.toMutableSet() ?: mutableSetOf()
+                if (following) set.remove(reporterId) else set.add(reporterId)
+                prefs.edit().putStringSet(key, set).apply()
+            }
+
+            // Sync with Firebase RTDB
+            scope.launch {
+                try {
+                    if (!following) {
+                        val body = "true".toRequestBody("application/json".toMediaTypeOrNull())
+                        val req = Request.Builder()
+                            .url("$RTDB_BASE_URL/follows/$userId/$reporterId.json")
+                            .put(body)
+                            .build()
+                        httpClient.newCall(req).execute().close()
+                    } else {
+                        val req = Request.Builder()
+                            .url("$RTDB_BASE_URL/follows/$userId/$reporterId.json")
+                            .delete()
+                            .build()
+                        httpClient.newCall(req).execute().close()
+                    }
+
+                    val countBody = "$updatedFollowers".toRequestBody("application/json".toMediaTypeOrNull())
+                    val countReq = Request.Builder()
+                        .url("$RTDB_BASE_URL/reporters/$reporterId/followersCount.json")
+                        .put(countBody)
+                        .build()
+                    httpClient.newCall(countReq).execute().close()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error updating follows in RTDB: ${e.message}")
+                }
+            }
+        }
+    }
+
+    /**
+     * Requirement 4: Views:
+     * - When video starts playing, increase posts/{postId}/viewsCount by 1
+     * - Show real viewsCount from Firebase (not 00)
+     */
     fun recordView(postId: String) {
+        if (viewedPostIds.contains(postId)) return
+        viewedPostIds.add(postId)
+
         val list = _posts.value.toMutableList()
         val index = list.indexOfFirst { it.id == postId }
         if (index != -1) {
@@ -485,24 +699,6 @@ object FirebaseRepository {
                     Log.e(TAG, "Error recording view in RTDB: ${e.message}")
                 }
             }
-        }
-    }
-
-    fun toggleFollowReporter(reporterId: String, userId: String) {
-        val list = _reporters.value.toMutableList()
-        val index = list.indexOfFirst { it.id == reporterId }
-        if (index != -1) {
-            val rep = list[index]
-            val following = rep.followedByUsers.contains(userId)
-            val updatedFollowers = if (following) {
-                rep.followedByUsers.remove(userId)
-                (rep.followersCount - 1).coerceAtLeast(0)
-            } else {
-                rep.followedByUsers.add(userId)
-                rep.followersCount + 1
-            }
-            list[index] = rep.copy(followersCount = updatedFollowers)
-            _reporters.value = list
         }
     }
 

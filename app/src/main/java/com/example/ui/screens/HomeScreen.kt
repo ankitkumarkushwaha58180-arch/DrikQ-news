@@ -320,26 +320,47 @@ fun HomeFeedView(
                                     .fillMaxWidth()
                                     .height(260.dp),
                                 onContentClick = {
-                                    FirebaseRepository.recordView(post.id)
                                     onPostClick(post.id)
+                                },
+                                onPlayStarted = {
+                                    FirebaseRepository.recordView(post.id)
                                 }
                             )
 
-                            // Title & Description
-                            Column(modifier = Modifier.padding(14.dp)) {
+                            // Title & Description - Clicking opens Full Description Screen
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp)
+                            ) {
                                 Text(
                                     text = post.title,
                                     color = Color.White,
-                                    fontSize = 15.sp,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
-                                    lineHeight = 20.sp
+                                    lineHeight = 22.sp,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onPostClick(post.id) }
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = post.description,
                                     color = Color.White.copy(alpha = 0.75f),
+                                    fontSize = 13.sp,
+                                    maxLines = 2,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onPostClick(post.id) }
+                                )
+                                Text(
+                                    text = "Read full report →",
+                                    color = NewsRed,
                                     fontSize = 12.sp,
-                                    maxLines = 2
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier
+                                        .padding(top = 4.dp)
+                                        .clickable { onPostClick(post.id) }
                                 )
 
                                 Spacer(modifier = Modifier.height(10.dp))
