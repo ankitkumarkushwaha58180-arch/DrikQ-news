@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,7 +41,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,11 +48,12 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.firebase.FirebaseRepository
 import com.example.ui.components.MediaContentView
-import com.example.ui.theme.BorderSlate
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkSurface
+import com.example.ui.theme.BorderLight
+import com.example.ui.theme.LightBackground
+import com.example.ui.theme.LightSurface
 import com.example.ui.theme.NewsRed
-import com.example.ui.theme.SlateGray
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 
 @Composable
 fun PostDetailScreen(
@@ -67,10 +69,10 @@ fun PostDetailScreen(
 
     if (post == null) {
         Box(
-            modifier = modifier.fillMaxSize().background(DarkBackground),
+            modifier = modifier.fillMaxSize().background(LightBackground),
             contentAlignment = Alignment.Center
         ) {
-            Text("Story not found", color = Color.White)
+            Text("Story not found", color = TextPrimary)
         }
         return
     }
@@ -80,7 +82,7 @@ fun PostDetailScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(LightBackground)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -90,20 +92,26 @@ fun PostDetailScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             // Top Nav
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Surface(
+                color = LightSurface,
+                shadowElevation = 2.dp,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Eyewitness Report", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Eyewitness Report", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             }
 
-            // Media Player using Bunny CDN URL
+            // Media Player
             MediaContentView(
                 mediaUrl = post.mediaUrl,
                 mediaType = post.mediaType,
@@ -117,7 +125,7 @@ fun PostDetailScreen(
 
             Column(modifier = Modifier.padding(18.dp)) {
                 Surface(
-                    color = NewsRed.copy(alpha = 0.15f),
+                    color = NewsRed.copy(alpha = 0.12f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Row(
@@ -133,31 +141,11 @@ fun PostDetailScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = post.title,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 28.sp
                 )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Bunny CDN URL Debug Field
-                Surface(
-                    color = DarkSurface,
-                    shape = RoundedCornerShape(8.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Text("Bunny CDN Stream Endpoint:", color = SlateGray, fontSize = 10.sp)
-                        Text(
-                            text = post.mediaUrl,
-                            color = Color(0xFF60A5FA),
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -167,8 +155,10 @@ fun PostDetailScreen(
                 val isFollowed = reporter?.followedByUsers?.contains(currentUserId) == true
 
                 Surface(
-                    color = DarkSurface,
+                    color = LightSurface,
                     shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+                    shadowElevation = 1.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -181,18 +171,19 @@ fun PostDetailScreen(
                                 .crossfade(true)
                                 .build(),
                             contentDescription = null,
-                            modifier = Modifier.size(44.dp).clip(CircleShape).background(DarkBackground)
+                            modifier = Modifier.size(44.dp).clip(CircleShape).background(LightBackground)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Filed by ${post.reporterName}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("Reporter ID: ${post.reporterId}", color = SlateGray, fontSize = 11.sp)
+                            Text("Filed by ${post.reporterName}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Reporter ID: ${post.reporterId}", color = TextSecondary, fontSize = 11.sp)
                         }
 
-                        androidx.compose.material3.Button(
+                        Button(
                             onClick = { FirebaseRepository.toggleFollowReporter(post.reporterId, currentUserId) },
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                containerColor = if (isFollowed) BorderSlate else NewsRed
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isFollowed) Color(0xFFE2E8F0) else NewsRed,
+                                contentColor = if (isFollowed) TextPrimary else Color.White
                             ),
                             shape = RoundedCornerShape(14.dp),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
@@ -214,16 +205,16 @@ fun PostDetailScreen(
                         Icon(
                             imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = "Like",
-                            tint = if (isLiked) NewsRed else Color.White
+                            tint = if (isLiked) NewsRed else TextSecondary
                         )
                     }
-                    Text("${post.likesCount} Likes", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("${post.likesCount} Likes", color = TextPrimary, fontWeight = FontWeight.Bold)
 
                     Spacer(modifier = Modifier.width(20.dp))
 
-                    Icon(Icons.Default.Visibility, contentDescription = null, tint = SlateGray, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Visibility, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("${post.viewsCount} Views", color = SlateGray)
+                    Text("${post.viewsCount} Views", color = TextSecondary)
 
                     Spacer(modifier = Modifier.weight(1f))
 
@@ -231,24 +222,24 @@ fun PostDetailScreen(
                         onClick = {
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "🚨 ${post.title}\n\n${post.description}\nStream: ${post.mediaUrl}")
+                                putExtra(Intent.EXTRA_TEXT, "🚨 ${post.title}\n📍 ${post.place}\n\n${post.description}")
                             }
                             context.startActivity(Intent.createChooser(intent, "Share Report"))
                         }
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                        Icon(Icons.Default.Share, contentDescription = "Share", tint = TextSecondary)
                     }
                 }
 
-                Divider(color = BorderSlate, modifier = Modifier.padding(vertical = 12.dp))
+                Divider(color = BorderLight, modifier = Modifier.padding(vertical = 12.dp))
 
-                Text("Full Eyewitness Description", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Full Eyewitness Description", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = post.description,
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 14.sp,
-                    lineHeight = 22.sp
+                    color = TextPrimary.copy(alpha = 0.85f),
+                    fontSize = 15.sp,
+                    lineHeight = 24.sp
                 )
             }
         }

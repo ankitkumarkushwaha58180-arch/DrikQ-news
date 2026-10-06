@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,11 +56,12 @@ import androidx.compose.ui.unit.sp
 import com.example.data.firebase.FirebaseRepository
 import com.example.ui.components.GoogleLogoIcon
 import com.example.ui.components.GoogleSignInButton
-import com.example.ui.theme.BorderSlate
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkSurface
+import com.example.ui.theme.BorderLight
+import com.example.ui.theme.LightBackground
+import com.example.ui.theme.LightSurface
 import com.example.ui.theme.NewsRed
-import com.example.ui.theme.SlateGray
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 import com.google.firebase.auth.FirebaseAuth
 import java.util.Locale
 
@@ -76,7 +78,6 @@ fun LoginScreen(
     var emailError by remember { mutableStateOf<String?>(null) }
     var isSigningIn by remember { mutableStateOf(false) }
 
-    // Real System Google Account Chooser
     val accountPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -106,19 +107,19 @@ fun LoginScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(LightBackground)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        // Decorative background glow
+        // Decorative subtle glow
         Box(
             modifier = Modifier
-                .size(320.dp)
+                .size(360.dp)
                 .align(Alignment.TopCenter)
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            NewsRed.copy(alpha = 0.22f),
+                            NewsRed.copy(alpha = 0.08f),
                             Color.Transparent
                         )
                     )
@@ -140,7 +141,7 @@ fun LoginScreen(
                     .size(92.dp)
                     .clip(CircleShape),
                 color = NewsRed,
-                shadowElevation = 8.dp
+                shadowElevation = 4.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -156,7 +157,7 @@ fun LoginScreen(
 
             Text(
                 text = "DRIKQ NEWS",
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 2.sp
@@ -165,8 +166,8 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Direct Ground-Level Reporting • Bunny.net Fast CDN Stream",
-                color = SlateGray,
+                text = "Direct Ground-Level Reporting & Verified News Feeds",
+                color = TextSecondary,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -204,20 +205,21 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Sign in with your device Google account to access verified news.",
-                color = Color.White.copy(alpha = 0.5f),
-                fontSize = 11.sp,
+                text = "Sign in with your device Google account to continue.",
+                color = TextSecondary,
+                fontSize = 12.sp,
                 textAlign = TextAlign.Center
             )
         }
 
-        // At the very bottom: Left: Reporter Login | Right: Admin Panel
+        // Fixed Bottom Portal Buttons
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter),
-            color = DarkSurface,
-            tonalElevation = 6.dp
+            color = LightSurface,
+            shadowElevation = 6.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight)
         ) {
             Row(
                 modifier = Modifier
@@ -240,7 +242,7 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Reporter Login",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -254,13 +256,13 @@ fun LoginScreen(
                     Icon(
                         imageVector = Icons.Default.AdminPanelSettings,
                         contentDescription = "Admin Panel",
-                        tint = Color(0xFF60A5FA),
+                        tint = Color(0xFF2563EB),
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Admin Panel",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -269,7 +271,7 @@ fun LoginScreen(
         }
     }
 
-    // Google Sign-In Dialog fallback for devices without Play services account manager
+    // Google Sign-In Fallback
     if (showManualAccountPrompt) {
         AlertDialog(
             onDismissRequest = { showManualAccountPrompt = false },
@@ -281,7 +283,7 @@ fun LoginScreen(
                         text = "Google Account",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = TextPrimary
                     )
                 }
             },
@@ -289,7 +291,7 @@ fun LoginScreen(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = "Enter your Google / Gmail account address to sign in:",
-                        color = SlateGray,
+                        color = TextSecondary,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(bottom = 14.dp)
                     )
@@ -308,9 +310,9 @@ fun LoginScreen(
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NewsRed,
-                            unfocusedBorderColor = BorderSlate,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                            unfocusedBorderColor = BorderLight,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -348,10 +350,10 @@ fun LoginScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showManualAccountPrompt = false }) {
-                    Text("Cancel", color = SlateGray)
+                    Text("Cancel", color = TextSecondary)
                 }
             },
-            containerColor = DarkSurface,
+            containerColor = LightSurface,
             shape = RoundedCornerShape(16.dp)
         )
     }

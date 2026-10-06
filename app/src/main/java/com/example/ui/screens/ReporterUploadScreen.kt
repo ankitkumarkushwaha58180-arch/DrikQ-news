@@ -69,11 +69,12 @@ import coil.request.ImageRequest
 import com.example.data.firebase.FirebaseRepository
 import com.example.data.model.MediaType
 import com.example.data.model.Reporter
-import com.example.ui.theme.BorderSlate
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkSurface
+import com.example.ui.theme.BorderLight
+import com.example.ui.theme.LightBackground
+import com.example.ui.theme.LightSurface
 import com.example.ui.theme.NewsRed
-import com.example.ui.theme.SlateGray
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.SuccessGreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -99,7 +100,6 @@ fun ReporterUploadScreen(
     var uploadProgress by remember { mutableIntStateOf(0) }
     var validationError by remember { mutableStateOf<String?>(null) }
 
-    // Real Device Gallery Picker Launcher
     val mediaPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
@@ -112,7 +112,7 @@ fun ReporterUploadScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(LightBackground)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -137,13 +137,13 @@ fun ReporterUploadScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = TextPrimary
                         )
                     }
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Reporter Upload Desk",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -152,9 +152,10 @@ fun ReporterUploadScreen(
                 // Reporter Badge
                 if (reporter != null) {
                     Surface(
-                        color = DarkSurface,
+                        color = LightSurface,
                         shape = RoundedCornerShape(20.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate)
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+                        shadowElevation = 1.dp
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -189,7 +190,7 @@ fun ReporterUploadScreen(
             // Step 1: Media Type Selection
             Text(
                 text = "1. SELECT MEDIA TYPE",
-                color = SlateGray,
+                color = TextSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
@@ -213,9 +214,10 @@ fun ReporterUploadScreen(
                             shape = RoundedCornerShape(12.dp)
                         ),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (mediaType == MediaType.VIDEO) DarkSurface else DarkBackground
+                        containerColor = if (mediaType == MediaType.VIDEO) LightSurface else Color(0xFFE2E8F0).copy(alpha = 0.5f)
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (mediaType == MediaType.VIDEO) 2.dp else 0.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(14.dp),
@@ -225,13 +227,13 @@ fun ReporterUploadScreen(
                         Icon(
                             imageVector = Icons.Default.Videocam,
                             contentDescription = "Video",
-                            tint = if (mediaType == MediaType.VIDEO) NewsRed else SlateGray,
+                            tint = if (mediaType == MediaType.VIDEO) NewsRed else TextSecondary,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Video News",
-                            color = Color.White,
+                            color = if (mediaType == MediaType.VIDEO) NewsRed else TextSecondary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -256,9 +258,10 @@ fun ReporterUploadScreen(
                             shape = RoundedCornerShape(12.dp)
                         ),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (mediaType == MediaType.PHOTO) DarkSurface else DarkBackground
+                        containerColor = if (mediaType == MediaType.PHOTO) LightSurface else Color(0xFFE2E8F0).copy(alpha = 0.5f)
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (mediaType == MediaType.PHOTO) 2.dp else 0.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(14.dp),
@@ -268,13 +271,13 @@ fun ReporterUploadScreen(
                         Icon(
                             imageVector = Icons.Default.Image,
                             contentDescription = "Photo",
-                            tint = if (mediaType == MediaType.PHOTO) NewsRed else SlateGray,
+                            tint = if (mediaType == MediaType.PHOTO) NewsRed else TextSecondary,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Photo Story",
-                            color = Color.White,
+                            color = if (mediaType == MediaType.PHOTO) NewsRed else TextSecondary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -284,10 +287,10 @@ fun ReporterUploadScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Step 2: Media Preview / Real Device Gallery Picker Box
+            // Step 2: Media Preview / Picker Box
             Text(
-                text = "2. CHOOSE FILE (BUNNY.NET EDGE STORAGE)",
-                color = SlateGray,
+                text = "2. CHOOSE FILE FROM GALLERY",
+                color = TextSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
@@ -306,9 +309,10 @@ fun ReporterUploadScreen(
                         }
                         mediaPickerLauncher.launch(request)
                     },
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = LightSurface),
                 shape = RoundedCornerShape(14.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate)
+                border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 if (selectedMediaUri != null) {
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -323,7 +327,7 @@ fun ReporterUploadScreen(
                         )
 
                         Surface(
-                            color = Color.Black.copy(alpha = 0.75f),
+                            color = Color.Black.copy(alpha = 0.7f),
                             shape = RoundedCornerShape(6.dp),
                             modifier = Modifier
                                 .padding(10.dp)
@@ -357,7 +361,7 @@ fun ReporterUploadScreen(
                         Surface(
                             modifier = Modifier.size(60.dp),
                             shape = CircleShape,
-                            color = NewsRed.copy(alpha = 0.15f)
+                            color = NewsRed.copy(alpha = 0.1f)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
@@ -371,15 +375,15 @@ fun ReporterUploadScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = if (mediaType == MediaType.VIDEO) "Tap to choose Video from Gallery" else "Tap to choose Photo from Gallery",
-                            color = Color.White,
+                            color = TextPrimary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Direct Edge PUT Upload to Bunny.net (Zone: drikq-news)",
-                            color = SlateGray,
-                            fontSize = 11.sp
+                            text = "Opens real phone media picker",
+                            color = TextSecondary,
+                            fontSize = 12.sp
                         )
                     }
                 }
@@ -390,14 +394,14 @@ fun ReporterUploadScreen(
             // Step 3: Required Fields
             Text(
                 text = "3. NEWS DETAILS (REQUIRED)",
-                color = SlateGray,
+                color = TextSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Title (required)
+            // Title
             OutlinedTextField(
                 value = title,
                 onValueChange = {
@@ -410,11 +414,11 @@ fun ReporterUploadScreen(
                 maxLines = 2,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = NewsRed,
-                    unfocusedBorderColor = BorderSlate,
+                    unfocusedBorderColor = BorderLight,
                     focusedLabelColor = NewsRed,
-                    unfocusedLabelColor = SlateGray,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    unfocusedLabelColor = TextSecondary,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -424,7 +428,7 @@ fun ReporterUploadScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Place / Location name (required)
+            // Place
             OutlinedTextField(
                 value = place,
                 onValueChange = {
@@ -443,11 +447,11 @@ fun ReporterUploadScreen(
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = NewsRed,
-                    unfocusedBorderColor = BorderSlate,
+                    unfocusedBorderColor = BorderLight,
                     focusedLabelColor = NewsRed,
-                    unfocusedLabelColor = SlateGray,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    unfocusedLabelColor = TextSecondary,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -457,7 +461,7 @@ fun ReporterUploadScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Description (required - unlimited length)
+            // Description (unlimited length)
             OutlinedTextField(
                 value = description,
                 onValueChange = {
@@ -469,11 +473,11 @@ fun ReporterUploadScreen(
                 minLines = 5,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = NewsRed,
-                    unfocusedBorderColor = BorderSlate,
+                    unfocusedBorderColor = BorderLight,
                     focusedLabelColor = NewsRed,
-                    unfocusedLabelColor = SlateGray,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    unfocusedLabelColor = TextSecondary,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -493,11 +497,12 @@ fun ReporterUploadScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Real-time upload progress bar from 0% to 100%
+            // Real-time upload progress bar
             AnimatedVisibility(visible = isUploading) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    colors = CardDefaults.cardColors(containerColor = LightSurface),
                     shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
@@ -509,8 +514,8 @@ fun ReporterUploadScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Uploading to Bunny.net Edge Storage...",
-                                color = Color.White,
+                                text = "Uploading to Cloud Storage...",
+                                color = TextPrimary,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -529,13 +534,7 @@ fun ReporterUploadScreen(
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
                             color = NewsRed,
-                            trackColor = BorderSlate
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Target: https://sg.storage.bunnycdn.com/drikq-news/posts/",
-                            color = SlateGray,
-                            fontSize = 11.sp
+                            trackColor = BorderLight
                         )
                     }
                 }
@@ -585,12 +584,12 @@ fun ReporterUploadScreen(
                         )
 
                         if (result.isSuccess) {
-                            Toast.makeText(context, "Uploaded to Bunny CDN! Status: Pending Approval", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Submitted! Status: Pending Editorial Review", Toast.LENGTH_LONG).show()
                             delay(400)
                             onUploadCompleteRedirectToFeed()
                         } else {
                             isUploading = false
-                            validationError = "Bunny upload failed: ${result.exceptionOrNull()?.message}"
+                            validationError = "Upload failed: ${result.exceptionOrNull()?.message}"
                         }
                     }
                 },
@@ -609,7 +608,7 @@ fun ReporterUploadScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isUploading) "Uploading to Bunny ($uploadProgress%)..." else "Submit News for Approval",
+                    text = if (isUploading) "Uploading ($uploadProgress%)..." else "Submit News for Approval",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White

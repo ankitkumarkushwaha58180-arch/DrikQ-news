@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
@@ -53,21 +52,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.firebase.FirebaseRepository
-import com.example.data.model.Post
 import com.example.data.model.PostStatus
 import com.example.ui.components.MediaContentView
-import com.example.ui.theme.BorderSlate
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkSurface
+import com.example.ui.theme.BorderLight
+import com.example.ui.theme.LightBackground
+import com.example.ui.theme.LightSurface
 import com.example.ui.theme.NewsRed
-import com.example.ui.theme.SlateGray
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 
 @Composable
 fun HomeScreen(
@@ -83,8 +81,8 @@ fun HomeScreen(
     Scaffold(
         bottomBar = {
             NavigationBar(
-                containerColor = DarkSurface,
-                tonalElevation = 8.dp
+                containerColor = LightSurface,
+                tonalElevation = 4.dp
             ) {
                 NavigationBarItem(
                     selected = selectedTab == 0,
@@ -94,9 +92,9 @@ fun HomeScreen(
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = NewsRed,
                         selectedTextColor = NewsRed,
-                        unselectedIconColor = SlateGray,
-                        unselectedTextColor = SlateGray,
-                        indicatorColor = DarkSurface
+                        unselectedIconColor = TextSecondary,
+                        unselectedTextColor = TextSecondary,
+                        indicatorColor = NewsRed.copy(alpha = 0.1f)
                     )
                 )
                 NavigationBarItem(
@@ -107,14 +105,14 @@ fun HomeScreen(
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = NewsRed,
                         selectedTextColor = NewsRed,
-                        unselectedIconColor = SlateGray,
-                        unselectedTextColor = SlateGray,
-                        indicatorColor = DarkSurface
+                        unselectedIconColor = TextSecondary,
+                        unselectedTextColor = TextSecondary,
+                        indicatorColor = NewsRed.copy(alpha = 0.1f)
                     )
                 )
             }
         },
-        containerColor = DarkBackground,
+        containerColor = LightBackground,
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
@@ -147,14 +145,18 @@ fun HomeFeedView(
     val currentUser by FirebaseRepository.currentUser.collectAsState()
     val currentUserId = currentUser?.uid ?: "guest"
 
-    // Only Approved posts should appear in Home Feed
+    // Only Approved posts appear in Home Feed
     val approvedPosts = posts.filter { it.status == PostStatus.APPROVED }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // App Top Bar
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LightBackground)
+    ) {
+        // App Top Bar (Clean, bright, NO Bunny text)
         Surface(
-            color = DarkSurface,
-            tonalElevation = 4.dp,
+            color = LightSurface,
+            shadowElevation = 2.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -166,33 +168,38 @@ fun HomeFeedView(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
-                        modifier = Modifier.size(34.dp),
+                        modifier = Modifier.size(36.dp),
                         shape = CircleShape,
                         color = NewsRed
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Campaign, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            Icon(
+                                imageVector = Icons.Default.Campaign,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
                             text = "DRIKQ FEED",
-                            color = Color.White,
-                            fontSize = 17.sp,
+                            color = TextPrimary,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.sp
                         )
                         Text(
-                            text = "Bunny.net Verified News Stream",
-                            color = SlateGray,
-                            fontSize = 10.sp
+                            text = "Verified Ground Reports",
+                            color = TextSecondary,
+                            fontSize = 11.sp
                         )
                     }
                 }
 
                 Surface(
-                    color = NewsRed.copy(alpha = 0.2f),
+                    color = NewsRed.copy(alpha = 0.12f),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
@@ -209,7 +216,7 @@ fun HomeFeedView(
                         Text(
                             text = "LIVE",
                             color = NewsRed,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -223,19 +230,24 @@ fun HomeFeedView(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-                    Icon(Icons.Default.Campaign, contentDescription = null, tint = SlateGray, modifier = Modifier.size(54.dp))
+                    Icon(
+                        imageVector = Icons.Default.Campaign,
+                        contentDescription = null,
+                        tint = TextSecondary.copy(alpha = 0.5f),
+                        modifier = Modifier.size(56.dp)
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "No Approved News Stories Yet",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Uploaded stories by reporters undergo editorial review in Admin Console before appearing here.",
-                        color = SlateGray,
-                        fontSize = 12.sp,
+                        text = "Uploaded stories by reporters undergo editorial review before appearing here.",
+                        color = TextSecondary,
+                        fontSize = 13.sp,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
@@ -251,9 +263,10 @@ fun HomeFeedView(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                        colors = CardDefaults.cardColors(containerColor = LightSurface),
                         shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate)
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column {
                             // Reporter Header
@@ -277,19 +290,22 @@ fun HomeFeedView(
                                             .build(),
                                         contentDescription = post.reporterName,
                                         contentScale = ContentScale.Crop,
-                                        modifier = Modifier.size(40.dp).clip(CircleShape).background(DarkBackground)
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(LightBackground)
                                     )
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column {
                                         Text(
                                             text = post.reporterName,
-                                            color = Color.White,
+                                            color = TextPrimary,
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
                                             text = post.place,
-                                            color = SlateGray,
+                                            color = TextSecondary,
                                             fontSize = 11.sp
                                         )
                                     }
@@ -298,7 +314,8 @@ fun HomeFeedView(
                                 Button(
                                     onClick = { FirebaseRepository.toggleFollowReporter(post.reporterId, currentUserId) },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isFollowed) BorderSlate else NewsRed
+                                        containerColor = if (isFollowed) Color(0xFFE2E8F0) else NewsRed,
+                                        contentColor = if (isFollowed) TextPrimary else Color.White
                                     ),
                                     shape = RoundedCornerShape(16.dp),
                                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
@@ -335,7 +352,7 @@ fun HomeFeedView(
                             ) {
                                 Text(
                                     text = post.title,
-                                    color = Color.White,
+                                    color = TextPrimary,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     lineHeight = 22.sp,
@@ -346,7 +363,7 @@ fun HomeFeedView(
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = post.description,
-                                    color = Color.White.copy(alpha = 0.75f),
+                                    color = TextSecondary,
                                     fontSize = 13.sp,
                                     maxLines = 2,
                                     modifier = Modifier
@@ -365,24 +382,7 @@ fun HomeFeedView(
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                // TEMPORARY TESTING REQUIREMENT: "Show the mediaUrl as small text under every post temporarily for testing"
-                                Surface(
-                                    color = DarkBackground,
-                                    shape = RoundedCornerShape(6.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = "CDN: ${post.mediaUrl}",
-                                        color = Color(0xFF60A5FA),
-                                        fontSize = 10.sp,
-                                        fontFamily = FontFamily.Monospace,
-                                        modifier = Modifier.padding(6.dp)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Actions: Likes, Views, Share
+                                // Actions: Likes, Views, Share (NO CDN URL displayed)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -393,23 +393,28 @@ fun HomeFeedView(
                                             Icon(
                                                 imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                                 contentDescription = "Like",
-                                                tint = if (isLiked) NewsRed else Color.White
+                                                tint = if (isLiked) NewsRed else TextSecondary
                                             )
                                         }
                                         Text(
                                             text = "${post.likesCount}",
-                                            color = Color.White,
+                                            color = TextPrimary,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp
                                         )
 
                                         Spacer(modifier = Modifier.width(16.dp))
 
-                                        Icon(Icons.Default.Visibility, contentDescription = null, tint = SlateGray, modifier = Modifier.size(16.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Visibility,
+                                            contentDescription = null,
+                                            tint = TextSecondary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
                                             text = "${post.viewsCount} views",
-                                            color = SlateGray,
+                                            color = TextSecondary,
                                             fontSize = 12.sp
                                         )
                                     }
@@ -420,13 +425,17 @@ fun HomeFeedView(
                                                 type = "text/plain"
                                                 putExtra(
                                                     Intent.EXTRA_TEXT,
-                                                    "🚨 DRIKQ NEWS BREAKING\n${post.title}\n📍 ${post.place}\n\nStream on Bunny CDN: ${post.mediaUrl}"
+                                                    "🚨 DRIKQ NEWS BREAKING\n${post.title}\n📍 ${post.place}"
                                                 )
                                             }
                                             context.startActivity(Intent.createChooser(shareIntent, "Share News"))
                                         }
                                     ) {
-                                        Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                                        Icon(
+                                            imageVector = Icons.Default.Share,
+                                            contentDescription = "Share",
+                                            tint = TextSecondary
+                                        )
                                     }
                                 }
                             }

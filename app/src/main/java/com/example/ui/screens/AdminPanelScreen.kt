@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -82,11 +83,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -96,11 +95,12 @@ import com.example.data.model.Post
 import com.example.data.model.PostStatus
 import com.example.data.model.PushNotificationItem
 import com.example.data.model.Reporter
-import com.example.ui.theme.BorderSlate
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkSurface
+import com.example.ui.theme.BorderLight
+import com.example.ui.theme.LightBackground
+import com.example.ui.theme.LightSurface
 import com.example.ui.theme.NewsRed
-import com.example.ui.theme.SlateGray
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.SuccessGreen
 import kotlinx.coroutines.launch
 
@@ -131,7 +131,7 @@ fun AdminPanelScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(LightBackground)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -153,7 +153,7 @@ fun AdminPanelScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color.White
+                        tint = TextPrimary
                     )
                 }
 
@@ -162,13 +162,13 @@ fun AdminPanelScreen(
                 Surface(
                     modifier = Modifier.size(76.dp),
                     shape = CircleShape,
-                    color = Color(0xFF2563EB).copy(alpha = 0.2f)
+                    color = Color(0xFF2563EB).copy(alpha = 0.12f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Shield,
                             contentDescription = null,
-                            tint = Color(0xFF60A5FA),
+                            tint = Color(0xFF2563EB),
                             modifier = Modifier.size(42.dp)
                         )
                     }
@@ -178,14 +178,14 @@ fun AdminPanelScreen(
 
                 Text(
                     text = "Editorial Admin Access",
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text = "Control reporters, Bunny Storage content, and notifications.",
-                    color = SlateGray,
+                    text = "Control reporters, content verification, and notifications.",
+                    color = TextSecondary,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 6.dp)
                 )
@@ -203,14 +203,14 @@ fun AdminPanelScreen(
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     leadingIcon = {
-                        Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF60A5FA))
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF2563EB))
                     },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF60A5FA),
-                        unfocusedBorderColor = BorderSlate,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        focusedBorderColor = Color(0xFF2563EB),
+                        unfocusedBorderColor = BorderLight,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -243,36 +243,42 @@ fun AdminPanelScreen(
             // Main Admin Panel
             Column(modifier = Modifier.fillMaxSize()) {
                 // Admin Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Surface(
+                    color = LightSurface,
+                    shadowElevation = 2.dp,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Admin Console",
+                                color = TextPrimary,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Admin Console",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
 
-                    TextButton(onClick = { FirebaseRepository.logoutAdmin() }) {
-                        Text("Log Out", color = NewsRed, fontWeight = FontWeight.Bold)
+                        TextButton(onClick = { FirebaseRepository.logoutAdmin() }) {
+                            Text("Log Out", color = NewsRed, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
 
                 // Tabs
                 ScrollableTabRow(
                     selectedTabIndex = selectedTabIndex,
-                    containerColor = DarkSurface,
-                    contentColor = Color.White,
+                    containerColor = LightSurface,
+                    contentColor = TextPrimary,
                     edgePadding = 16.dp
                 ) {
                     tabTitles.forEachIndexed { index, title ->
@@ -283,7 +289,7 @@ fun AdminPanelScreen(
                                 Text(
                                     text = title,
                                     fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (selectedTabIndex == index) NewsRed else SlateGray
+                                    color = if (selectedTabIndex == index) NewsRed else TextSecondary
                                 )
                             }
                         )
@@ -319,7 +325,7 @@ fun AdminPanelScreen(
                         )
                     }
 
-                    // Floating Action Button to Add Reporter
+                    // Floating Action Button
                     if (selectedTabIndex == 0) {
                         FloatingActionButton(
                             onClick = { showAddReporterDialog = true },
@@ -337,7 +343,7 @@ fun AdminPanelScreen(
         }
     }
 
-    // Add Reporter Dialog with Bunny.net Profile Photo Upload
+    // Add Reporter Dialog
     if (showAddReporterDialog) {
         var name by remember { mutableStateOf("") }
         var mobile by remember { mutableStateOf("") }
@@ -355,7 +361,7 @@ fun AdminPanelScreen(
             title = {
                 Text(
                     text = "Add New Ground Reporter",
-                    color = Color.White,
+                    color = TextPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
                 )
@@ -367,12 +373,11 @@ fun AdminPanelScreen(
                         .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Profile Photo Circular Preview
                     Box(
                         modifier = Modifier
                             .size(86.dp)
                             .clip(CircleShape)
-                            .background(DarkBackground)
+                            .background(LightBackground)
                             .border(2.dp, NewsRed, CircleShape)
                             .clickable(enabled = !isSavingReporter) {
                                 photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -393,12 +398,11 @@ fun AdminPanelScreen(
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = null,
-                                tint = SlateGray,
+                                tint = TextSecondary,
                                 modifier = Modifier.size(46.dp)
                             )
                         }
 
-                        // Camera badge
                         Box(
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
@@ -426,7 +430,7 @@ fun AdminPanelScreen(
                         Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (selectedPhotoUri != null) "Change Photo" else "Upload to Bunny (profiles/)",
+                            text = if (selectedPhotoUri != null) "Change Photo" else "Upload Profile Photo",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -441,9 +445,9 @@ fun AdminPanelScreen(
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NewsRed,
-                            unfocusedBorderColor = BorderSlate,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                            unfocusedBorderColor = BorderLight,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -457,9 +461,9 @@ fun AdminPanelScreen(
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NewsRed,
-                            unfocusedBorderColor = BorderSlate,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                            unfocusedBorderColor = BorderLight,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -473,17 +477,17 @@ fun AdminPanelScreen(
                         minLines = 2,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = NewsRed,
-                            unfocusedBorderColor = BorderSlate,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                            unfocusedBorderColor = BorderLight,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "System will auto-generate User ID & Password and upload photo to Bunny.net.",
-                        color = Color(0xFFFBBF24),
+                        text = "System will auto-generate User ID & Password upon save.",
+                        color = Color(0xFFD97706),
                         fontSize = 11.sp
                     )
                 }
@@ -510,15 +514,15 @@ fun AdminPanelScreen(
                     enabled = !isSavingReporter && name.isNotBlank() && mobile.isNotBlank() && address.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(containerColor = NewsRed)
                 ) {
-                    Text(if (isSavingReporter) "Uploading to Bunny..." else "Save Reporter", color = Color.White)
+                    Text(if (isSavingReporter) "Saving..." else "Save Reporter", color = Color.White)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showAddReporterDialog = false }, enabled = !isSavingReporter) {
-                    Text("Cancel", color = SlateGray)
+                    Text("Cancel", color = TextSecondary)
                 }
             },
-            containerColor = DarkSurface,
+            containerColor = LightSurface,
             shape = RoundedCornerShape(16.dp)
         )
     }
@@ -532,26 +536,23 @@ fun AdminPanelScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SuccessGreen)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Reporter Created!", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Reporter Created!", color = TextPrimary, fontWeight = FontWeight.Bold)
                 }
             },
             text = {
                 Column {
-                    Text("Share these login credentials with ${rep.name}:", color = SlateGray, fontSize = 13.sp)
+                    Text("Share these login credentials with ${rep.name}:", color = TextSecondary, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(14.dp))
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = DarkBackground),
+                        colors = CardDefaults.cardColors(containerColor = LightBackground),
                         shape = RoundedCornerShape(10.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Text("User ID: ${rep.id}", color = NewsRed, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text("Password: ${rep.password}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            if (rep.photoUrl.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text("Bunny CDN Avatar: ${rep.photoUrl}", color = SlateGray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-                            }
+                            Text("Password: ${rep.password}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
                 }
@@ -576,10 +577,10 @@ fun AdminPanelScreen(
             },
             dismissButton = {
                 TextButton(onClick = { newlyCreatedReporter = null }) {
-                    Text("Close", color = SlateGray)
+                    Text("Close", color = TextSecondary)
                 }
             },
-            containerColor = DarkSurface,
+            containerColor = LightSurface,
             shape = RoundedCornerShape(16.dp)
         )
     }
@@ -592,15 +593,17 @@ fun AdminReportersTab(
 ) {
     if (reporters.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No ground reporters added yet. Tap '+' to create.", color = SlateGray)
+            Text("No ground reporters added yet. Tap '+' to create.", color = TextSecondary)
         }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             items(reporters, key = { it.id }) { reporter ->
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = CardDefaults.cardColors(containerColor = LightSurface),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -613,14 +616,14 @@ fun AdminReportersTab(
                                 .build(),
                             contentDescription = reporter.name,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(50.dp).clip(CircleShape).background(DarkBackground)
+                            modifier = Modifier.size(50.dp).clip(CircleShape).background(LightBackground)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(reporter.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("ID: ${reporter.id} • ${reporter.mobile}", color = SlateGray, fontSize = 12.sp)
-                            Text(reporter.address, color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
-                            Text("Password: ${reporter.password}", color = Color(0xFFFBBF24), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text(reporter.name, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("ID: ${reporter.id} • ${reporter.mobile}", color = TextSecondary, fontSize = 12.sp)
+                            Text(reporter.address, color = TextPrimary.copy(alpha = 0.8f), fontSize = 11.sp)
+                            Text("Password: ${reporter.password}", color = Color(0xFFD97706), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                         IconButton(onClick = { onDeleteReporter(reporter.id) }) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete", tint = NewsRed)
@@ -640,7 +643,7 @@ fun AdminContentTab(
 ) {
     if (posts.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No posts uploaded from reporters yet.", color = SlateGray)
+            Text("No posts uploaded from reporters yet.", color = TextSecondary)
         }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -648,8 +651,10 @@ fun AdminContentTab(
                 val isApproved = post.status == PostStatus.APPROVED
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = CardDefaults.cardColors(containerColor = LightSurface),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(modifier = Modifier.fillMaxWidth()) {
@@ -660,7 +665,7 @@ fun AdminContentTab(
                                     .build(),
                                 contentDescription = post.title,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(90.dp).clip(RoundedCornerShape(8.dp)).background(DarkBackground)
+                                modifier = Modifier.size(90.dp).clip(RoundedCornerShape(8.dp)).background(LightBackground)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
@@ -677,16 +682,14 @@ fun AdminContentTab(
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(post.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                                Text(post.title, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                                 Spacer(modifier = Modifier.height(2.dp))
-                                Text("${post.place} • Reporter: ${post.reporterName}", color = SlateGray, fontSize = 11.sp)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text("Bunny URL: ${post.mediaUrl}", color = Color(0xFF60A5FA), fontSize = 9.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
+                                Text("${post.place} • Reporter: ${post.reporterName}", color = TextSecondary, fontSize = 11.sp)
                             }
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
-                        Text(post.description, color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp, maxLines = 2)
+                        Text(post.description, color = TextPrimary.copy(alpha = 0.8f), fontSize = 12.sp, maxLines = 2)
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -712,7 +715,7 @@ fun AdminContentTab(
                             ) {
                                 Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Delete from Bunny & RTDB", fontSize = 12.sp)
+                                Text("Delete", fontSize = 12.sp)
                             }
                         }
                     }
@@ -733,7 +736,7 @@ fun AdminPolicyTab(
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
     ) {
-        Text("Privacy Policy Text", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text("Privacy Policy Text", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = policyText,
@@ -741,15 +744,15 @@ fun AdminPolicyTab(
             minLines = 4,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = NewsRed,
-                unfocusedBorderColor = BorderSlate,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                unfocusedBorderColor = BorderLight,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
             ),
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(20.dp))
-        Text("Terms & Conditions Text", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text("Terms & Conditions Text", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = termsText,
@@ -757,9 +760,9 @@ fun AdminPolicyTab(
             minLines = 4,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = NewsRed,
-                unfocusedBorderColor = BorderSlate,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                unfocusedBorderColor = BorderLight,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -771,7 +774,7 @@ fun AdminPolicyTab(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
-            Text("Save & Sync with App", fontWeight = FontWeight.Bold)
+            Text("Save & Sync with App", fontWeight = FontWeight.Bold, color = Color.White)
         }
     }
 }
@@ -789,8 +792,8 @@ fun AdminNotificationsTab(
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
     ) {
-        Text("Broadcast Push Notification", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Text("Send breaking news alerts to all subscribers", color = SlateGray, fontSize = 12.sp)
+        Text("Broadcast Push Notification", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text("Send breaking news alerts to all subscribers", color = TextSecondary, fontSize = 12.sp)
 
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
@@ -800,9 +803,9 @@ fun AdminNotificationsTab(
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = NewsRed,
-                unfocusedBorderColor = BorderSlate,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                unfocusedBorderColor = BorderLight,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -815,9 +818,9 @@ fun AdminNotificationsTab(
             minLines = 3,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = NewsRed,
-                unfocusedBorderColor = BorderSlate,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                unfocusedBorderColor = BorderLight,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -837,9 +840,9 @@ fun AdminNotificationsTab(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth().height(50.dp)
         ) {
-            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
+            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.White)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Broadcast Alert", fontWeight = FontWeight.Bold)
+            Text("Broadcast Alert", fontWeight = FontWeight.Bold, color = Color.White)
         }
     }
 }

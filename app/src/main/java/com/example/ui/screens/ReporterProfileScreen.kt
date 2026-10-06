@@ -49,11 +49,13 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.firebase.FirebaseRepository
 import com.example.data.model.PostStatus
-import com.example.ui.theme.BorderSlate
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkSurface
+import com.example.ui.theme.BorderLight
+import com.example.ui.theme.LightBackground
+import com.example.ui.theme.LightSurface
+import com.example.ui.theme.LightSurfaceVariant
 import com.example.ui.theme.NewsRed
-import com.example.ui.theme.SlateGray
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 
 @Composable
 fun ReporterProfileScreen(
@@ -81,7 +83,7 @@ fun ReporterProfileScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(LightBackground)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -93,18 +95,19 @@ fun ReporterProfileScreen(
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Reporter Profile", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Reporter Profile", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    colors = CardDefaults.cardColors(containerColor = LightSurface),
                     shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -118,30 +121,31 @@ fun ReporterProfileScreen(
                                 .build(),
                             contentDescription = reporter.name,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(90.dp).clip(CircleShape).background(DarkBackground)
+                            modifier = Modifier.size(90.dp).clip(CircleShape).background(LightBackground)
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(reporter.name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Text(reporter.name, color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Icon(Icons.Default.Verified, contentDescription = "Verified", tint = Color(0xFF60A5FA), modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Verified, contentDescription = "Verified", tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp))
                         }
 
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.LocationOn, contentDescription = null, tint = NewsRed, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(reporter.address, color = SlateGray, fontSize = 12.sp)
+                            Text(reporter.address, color = TextSecondary, fontSize = 12.sp)
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Stats
                         Surface(
-                            color = DarkBackground,
+                            color = LightSurfaceVariant,
                             shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -149,16 +153,16 @@ fun ReporterProfileScreen(
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${reporter.followersCount}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                    Text("Followers", color = SlateGray, fontSize = 11.sp)
+                                    Text("${reporter.followersCount}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    Text("Followers", color = TextSecondary, fontSize = 11.sp)
                                 }
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${reporter.followingCount}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                    Text("Following", color = SlateGray, fontSize = 11.sp)
+                                    Text("${reporter.followingCount}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    Text("Following", color = TextSecondary, fontSize = 11.sp)
                                 }
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${reporterPosts.size}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                    Text("Stories", color = SlateGray, fontSize = 11.sp)
+                                    Text("${reporterPosts.size}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    Text("Stories", color = TextSecondary, fontSize = 11.sp)
                                 }
                             }
                         }
@@ -168,7 +172,8 @@ fun ReporterProfileScreen(
                         Button(
                             onClick = { FirebaseRepository.toggleFollowReporter(reporter.id, currentUserId) },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isFollowed) BorderSlate else NewsRed
+                                containerColor = if (isFollowed) Color(0xFFE2E8F0) else NewsRed,
+                                contentColor = if (isFollowed) TextPrimary else Color.White
                             ),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth().height(44.dp)
@@ -181,13 +186,13 @@ fun ReporterProfileScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                Text("Published Eyewitness Stories (${reporterPosts.size})", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Published Eyewitness Stories (${reporterPosts.size})", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(10.dp))
             }
 
             if (reporterPosts.isEmpty()) {
                 item {
-                    Text("No approved news stories published yet by this reporter.", color = SlateGray, fontSize = 13.sp)
+                    Text("No approved news stories published yet by this reporter.", color = TextSecondary, fontSize = 13.sp)
                 }
             } else {
                 items(reporterPosts, key = { it.id }) { post ->
@@ -196,21 +201,23 @@ fun ReporterProfileScreen(
                             .fillMaxWidth()
                             .padding(vertical = 6.dp)
                             .clickable { onPostClick(post.id) },
-                        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                        shape = RoundedCornerShape(12.dp)
+                        colors = CardDefaults.cardColors(containerColor = LightSurface),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                     ) {
                         Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             AsyncImage(
                                 model = ImageRequest.Builder(context).data(post.thumbnailUrl).crossfade(true).build(),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)).background(DarkBackground)
+                                modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)).background(LightBackground)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(post.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 2)
+                                Text(post.title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 2)
                                 Spacer(modifier = Modifier.height(2.dp))
-                                Text("${post.place} • ${post.likesCount} likes", color = SlateGray, fontSize = 11.sp)
+                                Text("${post.place} • ${post.likesCount} likes", color = TextSecondary, fontSize = 11.sp)
                             }
                         }
                     }

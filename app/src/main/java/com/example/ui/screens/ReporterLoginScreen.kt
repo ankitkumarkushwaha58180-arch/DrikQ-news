@@ -53,11 +53,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.firebase.FirebaseRepository
-import com.example.ui.theme.BorderSlate
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkSurface
+import com.example.ui.theme.BorderLight
+import com.example.ui.theme.LightBackground
+import com.example.ui.theme.LightSurface
 import com.example.ui.theme.NewsRed
-import com.example.ui.theme.SlateGray
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 
 @Composable
 fun ReporterLoginScreen(
@@ -73,7 +74,7 @@ fun ReporterLoginScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(LightBackground)
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
@@ -95,13 +96,13 @@ fun ReporterLoginScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color.White
+                        tint = TextPrimary
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Reporter Portal",
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -111,9 +112,10 @@ fun ReporterLoginScreen(
 
             // Informational Card
             Card(
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                colors = CardDefaults.cardColors(containerColor = LightSurface),
                 shape = RoundedCornerShape(16.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate),
+                border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -123,7 +125,7 @@ fun ReporterLoginScreen(
                     Surface(
                         modifier = Modifier.size(48.dp),
                         shape = CircleShape,
-                        color = NewsRed.copy(alpha = 0.15f)
+                        color = NewsRed.copy(alpha = 0.12f)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
@@ -138,13 +140,13 @@ fun ReporterLoginScreen(
                     Column {
                         Text(
                             text = "Ground Reporter Desk",
-                            color = Color.White,
+                            color = TextPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Log in with credentials assigned by your News Bureau Admin.",
-                            color = SlateGray,
+                            color = TextSecondary,
                             fontSize = 12.sp
                         )
                     }
@@ -172,11 +174,11 @@ fun ReporterLoginScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = NewsRed,
-                    unfocusedBorderColor = BorderSlate,
+                    unfocusedBorderColor = BorderLight,
                     focusedLabelColor = NewsRed,
-                    unfocusedLabelColor = SlateGray,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    unfocusedLabelColor = TextSecondary,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -206,7 +208,7 @@ fun ReporterLoginScreen(
                         Icon(
                             imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                             contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                            tint = SlateGray
+                            tint = TextSecondary
                         )
                     }
                 },
@@ -223,11 +225,11 @@ fun ReporterLoginScreen(
                 }),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = NewsRed,
-                    unfocusedBorderColor = BorderSlate,
+                    unfocusedBorderColor = BorderLight,
                     focusedLabelColor = NewsRed,
-                    unfocusedLabelColor = SlateGray,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    unfocusedLabelColor = TextSecondary,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier

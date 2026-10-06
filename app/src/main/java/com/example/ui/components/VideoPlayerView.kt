@@ -116,14 +116,6 @@ fun MediaContentView(
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = if (mediaUrl.isBlank()) "URL is empty" else mediaUrl,
-                            color = Color(0xFF94A3B8),
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            textAlign = TextAlign.Center
-                        )
                     }
                 }
             }
@@ -263,17 +255,9 @@ fun MediaContentView(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = playbackError ?: "Unknown error",
+                            text = "Unable to play video",
                             color = Color(0xFFFCA5A5),
                             fontSize = 11.sp,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "URL: $mediaUrl",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
                             textAlign = TextAlign.Center
                         )
                     }

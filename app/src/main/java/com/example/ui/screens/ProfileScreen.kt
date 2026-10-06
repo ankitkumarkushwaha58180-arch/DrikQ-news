@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PrivacyTip
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -54,11 +53,12 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.firebase.FirebaseRepository
-import com.example.ui.theme.BorderSlate
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkSurface
+import com.example.ui.theme.BorderLight
+import com.example.ui.theme.LightBackground
+import com.example.ui.theme.LightSurface
 import com.example.ui.theme.NewsRed
-import com.example.ui.theme.SlateGray
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 
 @Composable
 fun ProfileScreen(
@@ -76,19 +76,20 @@ fun ProfileScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(LightBackground)
             .verticalScroll(rememberScrollState())
             .padding(20.dp)
     ) {
-        Text("My Profile", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text("My Profile", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
 
         Spacer(modifier = Modifier.height(20.dp))
 
         // User Google Profile Card
         Card(
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+            colors = CardDefaults.cardColors(containerColor = LightSurface),
             shape = RoundedCornerShape(16.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate),
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -102,38 +103,38 @@ fun ProfileScreen(
                         .build(),
                     contentDescription = user?.name,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(80.dp).clip(CircleShape).background(DarkBackground)
+                    modifier = Modifier.size(80.dp).clip(CircleShape).background(LightBackground)
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
                     text = user?.name ?: "Reader Account",
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
 
                 Text(
                     text = user?.email ?: "reader@drikq.org",
-                    color = SlateGray,
+                    color = TextSecondary,
                     fontSize = 13.sp
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Surface(
-                    color = Color(0xFF2563EB).copy(alpha = 0.15f),
+                    color = Color(0xFF2563EB).copy(alpha = 0.1f),
                     shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF60A5FA))
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF93C5FD))
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = Color(0xFF60A5FA), modifier = Modifier.size(14.dp))
+                        Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Google Authenticated", color = Color(0xFF60A5FA), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Google Authenticated", color = Color(0xFF2563EB), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -142,13 +143,14 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Policies & Legal
-        Text("POLICIES & EDITORIAL", color = SlateGray, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text("POLICIES & EDITORIAL", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Spacer(modifier = Modifier.height(8.dp))
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+            colors = CardDefaults.cardColors(containerColor = LightSurface),
             shape = RoundedCornerShape(14.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate),
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column {
@@ -163,12 +165,12 @@ fun ProfileScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.PrivacyTip, contentDescription = null, tint = NewsRed)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Privacy Policy", color = Color.White, fontSize = 14.sp)
+                        Text("Privacy Policy", color = TextPrimary, fontSize = 14.sp)
                     }
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = SlateGray, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                 }
 
-                Divider(color = BorderSlate)
+                Divider(color = BorderLight)
 
                 Row(
                     modifier = Modifier
@@ -181,9 +183,9 @@ fun ProfileScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Description, contentDescription = null, tint = NewsRed)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Terms & Conditions", color = Color.White, fontSize = 14.sp)
+                        Text("Terms & Conditions", color = TextPrimary, fontSize = 14.sp)
                     }
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = SlateGray, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -191,13 +193,14 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Portals Quick Links
-        Text("DESK & CONSOLE", color = SlateGray, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Text("DESK & CONSOLE", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         Spacer(modifier = Modifier.height(8.dp))
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+            colors = CardDefaults.cardColors(containerColor = LightSurface),
             shape = RoundedCornerShape(14.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, BorderSlate),
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column {
@@ -212,12 +215,12 @@ fun ProfileScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Mic, contentDescription = null, tint = NewsRed)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Reporter Upload Desk", color = Color.White, fontSize = 14.sp)
+                        Text("Reporter Upload Desk", color = TextPrimary, fontSize = 14.sp)
                     }
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = SlateGray, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                 }
 
-                Divider(color = BorderSlate)
+                Divider(color = BorderLight)
 
                 Row(
                     modifier = Modifier
@@ -228,11 +231,11 @@ fun ProfileScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Color(0xFF60A5FA))
+                        Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Color(0xFF2563EB))
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Editorial Admin Console", color = Color.White, fontSize = 14.sp)
+                        Text("Editorial Admin Console", color = TextPrimary, fontSize = 14.sp)
                     }
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = SlateGray, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -260,14 +263,14 @@ fun ProfileScreen(
         val (dialogTitle, dialogContent) = showPolicyDialog!!
         AlertDialog(
             onDismissRequest = { showPolicyDialog = null },
-            title = { Text(dialogTitle, color = Color.White, fontWeight = FontWeight.Bold) },
-            text = { Text(dialogContent, color = Color.White.copy(alpha = 0.8f), lineHeight = 20.sp) },
+            title = { Text(dialogTitle, color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = { Text(dialogContent, color = TextSecondary, lineHeight = 20.sp) },
             confirmButton = {
                 Button(onClick = { showPolicyDialog = null }, colors = ButtonDefaults.buttonColors(containerColor = NewsRed)) {
                     Text("Close", color = Color.White)
                 }
             },
-            containerColor = DarkSurface,
+            containerColor = LightSurface,
             shape = RoundedCornerShape(16.dp)
         )
     }
