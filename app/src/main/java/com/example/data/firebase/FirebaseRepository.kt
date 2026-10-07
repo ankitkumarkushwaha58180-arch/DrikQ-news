@@ -61,6 +61,10 @@ object FirebaseRepository {
     private val _notifications = MutableStateFlow<List<PushNotificationItem>>(emptyList())
     val notifications: StateFlow<List<PushNotificationItem>> = _notifications.asStateFlow()
 
+    private val _adsEnabled = MutableStateFlow(true)
+    val adsEnabled: StateFlow<Boolean> = _adsEnabled.asStateFlow()
+
+    private var isListeningSettings = false
     private val viewedPostIds = mutableSetOf<String>()
 
     /**
@@ -101,7 +105,11 @@ object FirebaseRepository {
             _currentUser.value = user
         }
 
+        val savedAds = prefs.getBoolean("ads_enabled", true)
+        _adsEnabled.value = savedAds
+
         fetchFromRemoteRtdb()
+        startSettingsRealtimeListener()
     }
 
     private fun getUserId(): String {
@@ -114,6 +122,26 @@ object FirebaseRepository {
                 val currentUid = getUserId()
                 val locallyLiked = sharedPrefs?.getStringSet("liked_posts_$currentUid", emptySet()) ?: emptySet()
                 val locallyFollowed = sharedPrefs?.getStringSet("followed_reps_$currentUid", emptySet()) ?: emptySet()
+
+                // Fetch adsEnabled setting
+                try {
+                    val adsReq = Request.Builder()
+                        .url("$RTDB_BASE_URL/settings/adsEnabled.json")
+                        .get()
+                        .build()
+                    httpClient.newCall(adsReq).execute().use { adsRes ->
+                        if (adsRes.isSuccessful) {
+                            val adsBody = adsRes.body?.string()?.trim()
+                            if (!adsBody.isNullOrBlank() && adsBody != "null") {
+                                val enabled = adsBody == "true" || adsBody == "\"true\""
+                                _adsEnabled.value = enabled
+                                sharedPrefs?.edit()?.putBoolean("ads_enabled", enabled)?.apply()
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error fetching adsEnabled: ${e.message}")
+                }
 
                 // Fetch policy
                 val request = Request.Builder()
@@ -750,6 +778,52 @@ object FirebaseRepository {
             } catch (e: Exception) {
                 Log.e(TAG, "Error broadcasting notification: ${e.message}")
             }
+        }
+    }
+
+    private fun startSettingsRealtimeListener() {
+        if (isListeningSettings) return
+        isListeningSettings = true
+        scope.launch {
+            while (true) {
+                try {
+                    val adsReq = Request.Builder()
+                        .url("$RTDB_BASE_URL/settings/adsEnabled.json")
+                        .get()
+                        .build()
+                    httpClient.newCall(adsReq).execute().use { res ->
+                        if (res.isSuccessful) {
+                            val body = res.body?.string()?.trim()
+                            if (!body.isNullOrBlank() && body != "null") {
+                                val enabled = body == "true" || body == "\"true\""
+                                if (_adsEnabled.value != enabled) {
+                                    _adsEnabled.value = enabled
+                                    sharedPrefs?.edit()?.putBoolean("ads_enabled", enabled)?.apply()
+                                    Log.d(TAG, "Realtime listener updated adsEnabled to: $enabled")
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+                kotlinx.coroutines.delay(3000)
+            }
+        }
+    }
+
+    suspend fun setAdsEnabled(enabled: Boolean): Boolean {
+        _adsEnabled.value = enabled
+        sharedPrefs?.edit()?.putBoolean("ads_enabled", enabled)?.apply()
+        return try {
+            val req = Request.Builder()
+                .url("$RTDB_BASE_URL/settings/adsEnabled.json")
+                .put(enabled.toString().toRequestBody("application/json".toMediaTypeOrNull()))
+                .build()
+            httpClient.newCall(req).execute().use { res ->
+                res.isSuccessful
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving adsEnabled to RTDB: ${e.message}")
+            false
         }
     }
 }

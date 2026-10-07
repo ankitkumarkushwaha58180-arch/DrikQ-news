@@ -24,6 +24,7 @@ import com.example.ui.screens.ReporterProfileScreen
 import com.example.ui.screens.ReporterUploadScreen
 import com.example.ui.theme.DarkBackground
 import com.example.ui.theme.DrikqNewsTheme
+import com.google.android.gms.ads.MobileAds
 
 sealed interface Screen {
     data object Login : Screen
@@ -40,6 +41,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Initialize user session and persistent storage across app kills
         FirebaseRepository.initPersistence(applicationContext)
+        // Initialize Google Mobile Ads SDK (AdMob)
+        MobileAds.initialize(this) {}
         enableEdgeToEdge()
         setContent {
             DrikqNewsTheme {

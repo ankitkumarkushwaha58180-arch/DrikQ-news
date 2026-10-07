@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Shield
@@ -65,6 +66,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -117,12 +120,13 @@ fun AdminPanelScreen(
     val posts by FirebaseRepository.posts.collectAsState()
     val policy by FirebaseRepository.policy.collectAsState()
     val notifications by FirebaseRepository.notifications.collectAsState()
+    val adsEnabled by FirebaseRepository.adsEnabled.collectAsState()
 
     var adminPasscode by remember { mutableStateOf("") }
     var loginError by remember { mutableStateOf<String?>(null) }
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabTitles = listOf("Reporters", "Content", "Privacy Policy", "Push Alerts")
+    val tabTitles = listOf("Reporters", "Content", "Ads & Settings", "Privacy Policy", "Push Alerts")
 
     var showAddReporterDialog by remember { mutableStateOf(false) }
     var newlyCreatedReporter by remember { mutableStateOf<Reporter?>(null) }
@@ -308,14 +312,27 @@ fun AdminPanelScreen(
                             onApprove = { id -> FirebaseRepository.approvePost(id) },
                             onDelete = { id -> FirebaseRepository.deletePost(id) }
                         )
-                        2 -> AdminPolicyTab(
+                        2 -> AdminAdsSettingsTab(
+                            adsEnabled = adsEnabled,
+                            onToggleAds = { isChecked ->
+                                coroutineScope.launch {
+                                    val ok = FirebaseRepository.setAdsEnabled(isChecked)
+                                    Toast.makeText(
+                                        context,
+                                        if (isChecked) "Native Ads Turned ON" else "Native Ads Turned OFF",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        )
+                        3 -> AdminPolicyTab(
                             currentPolicy = policy,
                             onSave = { p, t ->
                                 FirebaseRepository.updatePolicy(p, t)
                                 Toast.makeText(context, "Policies updated!", Toast.LENGTH_SHORT).show()
                             }
                         )
-                        3 -> AdminNotificationsTab(
+                        4 -> AdminNotificationsTab(
                             posts = posts,
                             history = notifications,
                             onSend = { title, body, postId ->
@@ -719,6 +736,156 @@ fun AdminContentTab(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminAdsSettingsTab(
+    adsEnabled: Boolean,
+    onToggleAds: (Boolean) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = LightSurface),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                modifier = Modifier.size(36.dp),
+                                shape = CircleShape,
+                                color = if (adsEnabled) Color(0xFF10B981).copy(alpha = 0.12f) else NewsRed.copy(alpha = 0.12f)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Campaign,
+                                        contentDescription = null,
+                                        tint = if (adsEnabled) Color(0xFF10B981) else NewsRed,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Ads On / Off",
+                                color = TextPrimary,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = if (adsEnabled) "Native ads active after every 4 posts on Home Feed" else "Native ads currently paused across all user feeds",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Switch(
+                        checked = adsEnabled,
+                        onCheckedChange = onToggleAds,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = NewsRed,
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color(0xFFCBD5E1)
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Divider(color = BorderLight)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Realtime DB indicator
+                Surface(
+                    color = if (adsEnabled) Color(0xFF10B981).copy(alpha = 0.08f) else Color(0xFFF1F5F9),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (adsEnabled) Color(0xFF10B981).copy(alpha = 0.3f) else BorderLight
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(10.dp),
+                            shape = CircleShape,
+                            color = if (adsEnabled) Color(0xFF10B981) else Color(0xFF94A3B8)
+                        ) {}
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Firebase RTDB: settings/adsEnabled = $adsEnabled",
+                                color = TextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "Realtime listener active: changes reflect instantly on users' feeds without restart.",
+                                color = TextSecondary,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // AdMob Details Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = LightSurface),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                Text(
+                    text = "Google AdMob Configuration",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(LightBackground, RoundedCornerShape(8.dp))
+                        .padding(12.dp)
+                ) {
+                    Text("Ad Format: Native Advanced (Feed Card)", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text("App ID: ca-app-pub-8755082798616406~5712753378", color = TextSecondary, fontSize = 11.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Native Ad Unit ID: ca-app-pub-8755082798616406/6875545823", color = TextSecondary, fontSize = 11.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Frequency: 1 Native Ad after every 4 news stories", color = TextSecondary, fontSize = 11.sp)
                 }
             }
         }

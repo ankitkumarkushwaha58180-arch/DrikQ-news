@@ -12,6 +12,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DrikqNews"
         android:usesCleartextTraffic="true">
+        <!-- Google Mobile Ads (AdMob) App ID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-8755082798616406~5712753378" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

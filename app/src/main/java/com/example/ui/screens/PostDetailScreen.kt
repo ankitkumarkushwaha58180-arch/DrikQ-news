@@ -220,9 +220,10 @@ fun PostDetailScreen(
 
                     IconButton(
                         onClick = {
+                            val streamText = if (post.mediaUrl.isNotBlank()) "\n\nStream: ${post.mediaUrl}" else ""
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "🚨 ${post.title}\n📍 ${post.place}\n\n${post.description}")
+                                putExtra(Intent.EXTRA_TEXT, "🚨 ${post.title}\n📍 ${post.place}\n\n${post.description}$streamText")
                             }
                             context.startActivity(Intent.createChooser(intent, "Share Report"))
                         }

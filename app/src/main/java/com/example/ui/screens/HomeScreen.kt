@@ -60,6 +60,7 @@ import coil.request.ImageRequest
 import com.example.data.firebase.FirebaseRepository
 import com.example.data.model.PostStatus
 import com.example.ui.components.MediaContentView
+import com.example.ui.components.NativeAdCard
 import com.example.ui.theme.BorderLight
 import com.example.ui.theme.LightBackground
 import com.example.ui.theme.LightSurface
@@ -144,6 +145,7 @@ fun HomeFeedView(
     val reporters by FirebaseRepository.reporters.collectAsState()
     val currentUser by FirebaseRepository.currentUser.collectAsState()
     val currentUserId = currentUser?.uid ?: "guest"
+    val adsEnabled by FirebaseRepository.adsEnabled.collectAsState()
 
     // Only Approved posts appear in Home Feed
     val approvedPosts = posts.filter { it.status == PostStatus.APPROVED }
@@ -254,191 +256,201 @@ fun HomeFeedView(
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(approvedPosts, key = { it.id }) { post ->
-                    val reporter = reporters.find { it.id == post.reporterId }
-                    val isFollowed = reporter?.followedByUsers?.contains(currentUserId) == true
-                    val isLiked = post.likedByUsers.contains(currentUserId)
+                approvedPosts.forEachIndexed { index, post ->
+                    item(key = post.id) {
+                        val reporter = reporters.find { it.id == post.reporterId }
+                        val isFollowed = reporter?.followedByUsers?.contains(currentUserId) == true
+                        val isLiked = post.likedByUsers.contains(currentUserId)
 
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = LightSurface),
-                        shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column {
-                            // Reporter Header
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            colors = CardDefaults.cardColors(containerColor = LightSurface),
+                            shape = RoundedCornerShape(16.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, BorderLight),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column {
+                                // Reporter Header
                                 Row(
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { onReporterClick(post.reporterId) },
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(context)
-                                            .data(post.reporterPhotoUrl.ifBlank { "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80" })
-                                            .crossfade(true)
-                                            .build(),
-                                        contentDescription = post.reporterName,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .background(LightBackground)
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column {
-                                        Text(
-                                            text = post.reporterName,
-                                            color = TextPrimary,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = post.place,
-                                            color = TextSecondary,
-                                            fontSize = 11.sp
-                                        )
-                                    }
-                                }
-
-                                Button(
-                                    onClick = { FirebaseRepository.toggleFollowReporter(post.reporterId, currentUserId) },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isFollowed) Color(0xFFE2E8F0) else NewsRed,
-                                        contentColor = if (isFollowed) TextPrimary else Color.White
-                                    ),
-                                    shape = RoundedCornerShape(16.dp),
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                    modifier = Modifier.height(32.dp)
-                                ) {
-                                    Text(
-                                        text = if (isFollowed) "Following" else "Follow",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-
-                            // Media Player with Media3 ExoPlayer or Coil Photo
-                            MediaContentView(
-                                mediaUrl = post.mediaUrl,
-                                mediaType = post.mediaType,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(260.dp),
-                                onContentClick = {
-                                    onPostClick(post.id)
-                                },
-                                onPlayStarted = {
-                                    FirebaseRepository.recordView(post.id)
-                                }
-                            )
-
-                            // Title & Description - Clicking opens Full Description Screen
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp)
-                            ) {
-                                Text(
-                                    text = post.title,
-                                    color = TextPrimary,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    lineHeight = 22.sp,
-                                    modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { onPostClick(post.id) }
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = post.description,
-                                    color = TextSecondary,
-                                    fontSize = 13.sp,
-                                    maxLines = 2,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onPostClick(post.id) }
-                                )
-                                Text(
-                                    text = "Read full report →",
-                                    color = NewsRed,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier
-                                        .padding(top = 4.dp)
-                                        .clickable { onPostClick(post.id) }
-                                )
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                // Actions: Likes, Views, Share (NO CDN URL displayed)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
+                                        .padding(12.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        IconButton(onClick = { FirebaseRepository.toggleLike(post.id, currentUserId) }) {
-                                            Icon(
-                                                imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                                contentDescription = "Like",
-                                                tint = if (isLiked) NewsRed else TextSecondary
+                                    Row(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { onReporterClick(post.reporterId) },
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(context)
+                                                .data(post.reporterPhotoUrl.ifBlank { "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80" })
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = post.reporterName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(CircleShape)
+                                                .background(LightBackground)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text(
+                                                text = post.reporterName,
+                                                color = TextPrimary,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = post.place,
+                                                color = TextSecondary,
+                                                fontSize = 11.sp
                                             )
                                         }
-                                        Text(
-                                            text = "${post.likesCount}",
-                                            color = TextPrimary,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp
-                                        )
-
-                                        Spacer(modifier = Modifier.width(16.dp))
-
-                                        Icon(
-                                            imageVector = Icons.Default.Visibility,
-                                            contentDescription = null,
-                                            tint = TextSecondary,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "${post.viewsCount} views",
-                                            color = TextSecondary,
-                                            fontSize = 12.sp
-                                        )
                                     }
 
-                                    IconButton(
-                                        onClick = {
-                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                type = "text/plain"
-                                                putExtra(
-                                                    Intent.EXTRA_TEXT,
-                                                    "🚨 DRIKQ NEWS BREAKING\n${post.title}\n📍 ${post.place}"
-                                                )
-                                            }
-                                            context.startActivity(Intent.createChooser(shareIntent, "Share News"))
-                                        }
+                                    Button(
+                                        onClick = { FirebaseRepository.toggleFollowReporter(post.reporterId, currentUserId) },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (isFollowed) Color(0xFFE2E8F0) else NewsRed,
+                                            contentColor = if (isFollowed) TextPrimary else Color.White
+                                        ),
+                                        shape = RoundedCornerShape(16.dp),
+                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                        modifier = Modifier.height(32.dp)
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Share,
-                                            contentDescription = "Share",
-                                            tint = TextSecondary
+                                        Text(
+                                            text = if (isFollowed) "Following" else "Follow",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
                                 }
+
+                                // Media Player with Media3 ExoPlayer or Coil Photo
+                                MediaContentView(
+                                    mediaUrl = post.mediaUrl,
+                                    mediaType = post.mediaType,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(260.dp),
+                                    onContentClick = {
+                                        onPostClick(post.id)
+                                    },
+                                    onPlayStarted = {
+                                        FirebaseRepository.recordView(post.id)
+                                    }
+                                )
+
+                                // Title & Description - Clicking opens Full Description Screen
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp)
+                                ) {
+                                    Text(
+                                        text = post.title,
+                                        color = TextPrimary,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        lineHeight = 22.sp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onPostClick(post.id) }
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = post.description,
+                                        color = TextSecondary,
+                                        fontSize = 13.sp,
+                                        maxLines = 2,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onPostClick(post.id) }
+                                    )
+                                    Text(
+                                        text = "Read full report →",
+                                        color = NewsRed,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier
+                                            .padding(top = 4.dp)
+                                            .clickable { onPostClick(post.id) }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    // Actions: Likes, Views, Share
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            IconButton(onClick = { FirebaseRepository.toggleLike(post.id, currentUserId) }) {
+                                                Icon(
+                                                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                                    contentDescription = "Like",
+                                                    tint = if (isLiked) NewsRed else TextSecondary
+                                                )
+                                            }
+                                            Text(
+                                                text = "${post.likesCount}",
+                                                color = TextPrimary,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp
+                                            )
+
+                                            Spacer(modifier = Modifier.width(16.dp))
+
+                                            Icon(
+                                                imageVector = Icons.Default.Visibility,
+                                                contentDescription = null,
+                                                tint = TextSecondary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "${post.viewsCount} views",
+                                                color = TextSecondary,
+                                                fontSize = 12.sp
+                                            )
+                                        }
+
+                                        IconButton(
+                                            onClick = {
+                                                val streamText = if (post.mediaUrl.isNotBlank()) "\nStream: ${post.mediaUrl}" else ""
+                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                    type = "text/plain"
+                                                    putExtra(
+                                                        Intent.EXTRA_TEXT,
+                                                        "🚨 DRIKQ NEWS BREAKING\n${post.title}\n📍 ${post.place}$streamText"
+                                                    )
+                                                }
+                                                context.startActivity(Intent.createChooser(shareIntent, "Share News"))
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Share,
+                                                contentDescription = "Share",
+                                                tint = TextSecondary
+                                            )
+                                        }
+                                    }
+                                }
                             }
+                        }
+                    }
+
+                    // Show a Native Ad after every 4 news posts
+                    if (adsEnabled && (index + 1) % 4 == 0) {
+                        item(key = "native_ad_slot_${index / 4}") {
+                            NativeAdCard()
                         }
                     }
                 }
